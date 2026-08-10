@@ -1,0 +1,44 @@
+# Base rules for this lab, not inherited from a generic template. This edition
+# ships no workstream, so most entries below are precautionary — set once here
+# so a future workstream's build output is excluded by default rather than by
+# someone remembering to add a rule after the fact.
+# gen: c5f95892b45ff548
+#
+# One thing this file deliberately does NOT ignore: the status registers.
+# `RAID.md` and `current_status.md` are published on purpose, once a
+# workstream ships one; see `CURATION.md`.
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Generated artefacts. Anything reproduced by running a workstream's own
+# tooling is excluded rather than committed, so a reader is pointed at the
+# reproduction command rather than a copy that can go stale.
+*.log
+
+# Local environment. Nothing in this edition needs a committed one; excluded
+# by default for whatever a future workstream adds.
+.env
+.env.*
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+*~
+.idea/
+.vscode/

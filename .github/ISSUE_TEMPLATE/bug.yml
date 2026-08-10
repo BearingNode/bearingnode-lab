@@ -1,0 +1,72 @@
+name: Something does not work
+description: Code, a command or a documented result that does not do what this repository says it does
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. **A reproduction beats a description** —
+        this repository publishes commands and expects them to run, so a
+        command plus its actual output is the most useful thing you can give us.
+
+        If your issue is that something here is *wrong* rather than *broken* —
+        a claim you think does not hold, a signal you think is missing — please
+        use the **Question or challenge** template instead. Those are welcome
+        and are not bugs.
+
+  - type: input
+    id: area
+    attributes:
+      label: Which part of the repository
+      description: The workstream folder, or `root` for the lab-level documents.
+      placeholder: e.g. root
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and where this repository says so
+      description: Quote the file and line if you can. If the expectation came from somewhere else, say where.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: The command you ran and its output, verbatim. Redact anything of your own you would rather not publish.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, and how you brought up any services this needed.
+      placeholder: |
+        OS:
+        Python:
+        Services:
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: >-
+        **Substantive text you post here is a contribution under the
+        [CLA](CLA.md), and submitting it is your acceptance of it.**
+        If you would rather it were not, mark it "Not a Contribution" —
+        clause 1 excludes it, and the question is just as welcome.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: I have read the relevant part of the repository, and this is not a documented limitation.
+          required: false
+        - label: I have not included credentials, personal data or anything from a private system in this report.
+          required: true

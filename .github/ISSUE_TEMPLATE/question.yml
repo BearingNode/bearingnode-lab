@@ -1,0 +1,73 @@
+name: Question or challenge
+description: Ask something, or argue that something here is wrong
+title: "[question] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Challenges are contributions here, not complaints.** A well-argued
+        issue explaining why something does not survive contact with a real
+        estate is worth more to us than a tidy patch — see `CONTRIBUTING.md`.
+
+        You do not need to have a fix, and you do not need to be sure.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of thing is this
+      options:
+        - A question about how something here works
+        - A claim in this repository that I think does not hold
+        - A gap — something missing, unobtainable, or misleading in practice
+        - A view from a discipline this lab has not accounted for
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: area
+    attributes:
+      label: Which part of the repository
+      description: The workstream folder, or `root` for the lab-level documents.
+      placeholder: e.g. root
+    validations:
+      required: false
+
+  - type: textarea
+    id: body
+    attributes:
+      label: The question or the argument
+      description: >-
+        Quote what you are responding to if there is something specific. If you
+        are arguing a claim is wrong, what would we have to see to agree with
+        you?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Where you are coming from
+      description: >-
+        Optional, and useful rather than nosy — a regulator, an auditor, a
+        platform engineer and a model owner all see this differently, and the
+        answer often depends on which one is asking.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: >-
+        **Substantive text you post here is a contribution under the
+        [CLA](CLA.md), and submitting it is your acceptance of it.**
+        If you would rather it were not, mark it "Not a Contribution" —
+        clause 1 excludes it, and the question is just as welcome.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: I have not included credentials, personal data or anything from a private system in this issue.
+          required: true
