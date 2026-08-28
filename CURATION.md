@@ -51,6 +51,20 @@ kind:
   lab.
 - **Working language.** Notes written at speed carry the vocabulary of notes
   written at speed. That is edited for register, not for meaning.
+- **Register entries that are pure internal process noise are not promoted.**
+  A status register also drops rows that record nothing but internal tooling
+  or repository housekeeping — a broken git submodule link, a CI flag typo, a
+  local port collision — where the entry has no bearing on the workstream's
+  findings or argument. This is curation for relevance, not for flattery: the
+  distinction is that nothing is cut for being wrong or embarrassing —
+  corrections, invalidated assumptions and reversed decisions all stay, in
+  full, exactly as recorded. For example, an entry recording two directories
+  accidentally committed as broken git submodule links, fixed with `git rm
+  --cached`, does not appear in a published register — it never bore on any
+  claim the workstream makes. An entry recording that the workstream's own
+  reference implementation silently dropped the exact kind of event it exists
+  to capture does appear, in full, because it is a real finding about the
+  argument itself.
 - **Anything not promoted at all**, per the classification step above.
 
 **What is not edited is the substance.** No finding is softened, no conclusion
