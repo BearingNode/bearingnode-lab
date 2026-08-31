@@ -1,0 +1,122 @@
+name: mcp-lineage
+# gen: fcb3a017e8fc2d70
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      # 5433 on the host: 5432 is commonly already taken by a local Postgres.
+      # In-cluster services still reach this as postgres:5432.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  marquez:
+    image: marquezproject/marquez:0.51.1
+    environment:
+      # Only HOST/PORT are honoured — the image's bundled marquez.dev.yml
+      # hardcodes the database name, user and password (all `marquez`). The
+      # role is created to match in postgres/init-databases.sh.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      # Defaults to true and would require an OpenSearch service we don't run.
+      SEARCH_ENABLED: "false"
+    ports:
+      - "5000:5000"   # API — OL events go to /api/v1/lineage
+      - "5001:5001"   # admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  marquez-web:
+    image: marquezproject/marquez-web:0.51.1
+    environment:
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: 5000
+      WEB_PORT: 3000   # required by the image's entrypoint; it exits without it
+    ports:
+      - "3033:3000"
+    depends_on:
+      - marquez
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # UI
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.157.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"    # OTLP gRPC — mcp-server sends spans here
+      - "4318:4318"    # OTLP HTTP
+    depends_on:
+      - jaeger
+
+  # crystaldba/postgres-mcp, installed from PyPI at a pinned version and
+  # instrumented for OpenLineage by swapping its SQL driver factory — not
+  # forked, not vendored (RAID D03). The from-scratch server this replaces is
+  # kept at ./mcp_server for comparison and is no longer run.
+  mcp-server:
+    build: ./mcp_server_ol
+    environment:
+      # Read by upstream itself; also the naming authority for dataset
+      # namespace and name (RAID I16).
+      DATABASE_URI: postgresql://postgres:postgres@postgres:5432/warehouse
+      MARQUEZ_URL: http://marquez:5000
+      OL_JOB_NAMESPACE: mcp-lineage-demo
+      # The demo's tables live in this schema, so bare table references in
+      # agent-written SQL resolve the way the server would resolve them.
+      OL_DEFAULT_SCHEMA: obsinsure
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      marquez:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+
+  # The same server, configured to fail closed, pointed at a collector that
+  # does not exist — RAID R08, D11. This exists to make the *other* posture
+  # demonstrable rather than merely described: with lineage unrecordable, a
+  # tool call here is refused instead of executing unrecorded.
+  #
+  # Deliberately a second instance rather than a toggle on the first, so the
+  # default deployment stays fail-open (D11) and both postures can be shown in
+  # one `docker compose up` without breaking the demo stack.
+  mcp-server-failclosed:
+    build: ./mcp_server_ol
+    environment:
+      DATABASE_URI: postgresql://postgres:postgres@postgres:5432/warehouse
+      # Nothing listens here. That is the point.
+      MARQUEZ_URL: http://marquez-does-not-exist:5000
+      LINEAGE_FAILURE_MODE: closed
+      OL_JOB_NAMESPACE: mcp-lineage-demo
+      OL_DEFAULT_SCHEMA: obsinsure
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+volumes:
+  pg-data:

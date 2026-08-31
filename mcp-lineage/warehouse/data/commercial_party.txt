@@ -1,0 +1,61 @@
+﻿tax_id|industry_code|party_name|addr_city|postal_code|addr_street|party_form|party_type|party_id
+07-1856472|45|Hernandez-Carroll|South Zacharyhaven, KY|00420|9232 Tran Burgs|8030|C|141
+07-0819190|22|Boyer, Trujillo and Norris|Buckleyview, NH|00042|2206 Sarah Springs|8030|C|142
+29-7187715|22|Harris, Velasquez and Edwards|Port Amber, TX|00171|5898 Taylor Circles|8020|C|143
+19-8374435|61|Hart, Wang and Lloyd|Patriciabury, AL|00449|4460 Alex Inlet|8060|C|144
+19-0586166|23|Serrano, Hudson and Green|Greenchester, ME|00152|2534 Rich Squares|8032|C|145
+19-5814136|31|Wilkinson, King and Baldwin|North Matthew, TX|00119|505 Rebecca Lodge|8010|C|146
+07-4773049|31|Martinez Inc|Port Nathanmouth, AR|00191|9938 Chavez Lane|8010|C|147
+29-8282316|22|Larsen Group|Jeffreyfort, AR|00250|5556 Carter Ports|8021|C|148
+19-0301757|51|Ramirez, Wilson and Roth|Andreahaven, LA|00471|1849 Pena Plaza|8031|C|149
+07-0296058|23|Walters Group|South Stephenside, AK|00231|3976 Schneider Rapid|8010|C|150
+07-3901527|92|Ward, Holloway and Anderson|New Charles, DC|00236|6888 Michael Village|8032|C|151
+07-8666901|72|Perkins-Parker|Port Sarahshire, OH|00457|2615 Reynolds Harbor|8060|C|152
+07-5587302|51|Terrell, Leonard and Allen|Robinmouth, ID|00394|6257 Kristen Islands|8032|C|153
+09-0480871|32|Blair PLC|Henryfurt, SC|00326|1111 William Islands|8031|C|154
+18-7417741|33|Solomon, Scott and Warren|Andersonport, NM|00250|6370 Jessica Wall|8040|C|155
+89-1463769|71|Allen-Hall|West Christyland, RI|00058|9004 Thornton Station|8032|C|156
+28-7177126|33|Fisher, Delgado and Thomas|Lake Debra, OK|00410|2869 Shannon Mountain|8040|C|157
+19-6804695|51|Ritter and Sons|Henryfurt, SC|00461|1787 Francis Isle|8020|C|158
+28-4447031|62|Reeves-Parks|Annefort, NJ|00190|9369 Arnold Way|8050|C|159
+89-3557039|81|Phillips Ltd|Kevinbury, OH|00184|7564 Jason Walks|8031|C|160
+07-7242864|31|Shaw-Miles|Aprilberg, LA|00210|5297 Amy Station|8040|C|161
+89-1137045|81|Morton, Ray and Gentry|Galvanchester, NM|00006|9836 Flores Avenue|8040|C|162
+78-0103104|61|Donovan, Smith and Burke|South Zacharyhaven, KY|00086|6377 Johnson Motorway|8040|C|163
+29-1031797|62|Jimenez, Sanchez and Shaffer|Nancymouth, PA|00414|672 Galloway Dale|8060|C|164
+17-8365292|48|Montgomery, Lee and Glenn|Joshuaton, TN|00249|3957 Newman Harbors|8032|C|165
+79-8718729|21|Ramirez, Young and Brown|Christophershire, MN|00179|9882 Scott Place|8020|C|166
+08-9380833|54|Moody, Mckenzie and Gallegos|Galvanchester, NM|00395|3108 Craig Village|8030|C|167
+49-2111936|51|Huff, Short and Curry|Diazborough, MI|00371|5865 Salazar Camp|8021|C|168
+78-6434212|11|Wallace-Dawson|Rodriguezshire, NV|00227|4959 William Turnpike|8040|C|169
+18-7985287|52|Collins-Atkinson|South Thomasville, WV|00206|9312 Haynes Burg|8030|C|170
+28-5201685|54|Ramirez-Stanley|Brittanybury, IN|00141|5141 Hudson Throughway|8030|C|171
+49-5744138|22|Mann, Young and Kerr|New Jasonland, CA|00390|7175 Jacobson Well|8021|C|172
+29-4169114|21|Gilbert LLC|North Johntown, SC|00095|2988 Anne Fork|8031|C|173
+49-2876861|62|Anderson and Sons|East Ryan, WA|00012|5836 Melissa Hills|8030|C|174
+49-6186995|51|Shaw-Miles|Michaelville, UT|00304|483 Rocha Pine|8021|C|175
+07-2928684|23|Brown Ltd|East Christinaberg, AR|00181|7571 Fuentes Extension|8021|C|176
+07-2120751|21|Clark PLC|Lake Alexanderville, DE|00184|4434 Chris Center|8020|C|177
+08-7809227|32|Ruiz Group|South Stephenside, AK|00103|7770 Jenkins Village|8060|C|178
+08-3703378|72|Smith Group|Lewiston, SC|00196|8906 Flores Avenue|8050|C|179
+18-7629163|53|Moyer, Blair and Bailey|Port Ricardoberg, WA|00434|465 Amy Crest|8032|C|180
+89-2021369|42|Ryan and Sons|Robertsside, DE|00369|9412 Holly Curve|8060|C|181
+79-5097849|45|Wells LLC|South Laura, FL|00412|974 Adams Junctions|8030|C|182
+18-6841507|81|Martinez Ltd|Lake Mariafurt, DC|00455|4221 Roberts Cliffs|8021|C|183
+79-8857586|71|Lewis, Steele and Melendez|New Charlestown, TN|00359|1692 John Pines|8050|C|184
+19-6117096|42|Brady-Harris|Lake Robertside, AR|00194|2680 Cole Lock|8050|C|185
+29-8179924|31|Hays, Kennedy and Martin|Port Cynthiatown, CT|00111|317 Hawkins Shore|8010|C|186
+19-5012639|71|Orozco Group|East Chrisburgh, KS|00029|6077 Linda Mountains|8010|C|187
+28-0991245|32|Hanna, Patterson and Wiley|Michaeltown, PA|00123|9475 Chris Center|8030|C|188
+07-2313090|51|Ramirez-Stanley|North Normanton, SD|00145|2545 Rocha Roads|8031|C|189
+08-3653118|23|Morris, Rodriguez and Hardy|West Julieberg, TN|00362|4787 Craig Village|8050|C|190
+18-1570736|54|Alexander, Bridges and Elliott|Maryborough, PA|00001|8676 Gallegos Forks|8050|C|191
+79-9578141|62|Wallace-Dawson|Port Seanshire, NE|00432|9244 Chavez Lane|8050|C|192
+18-7335006|52|Simpson Group|West Douglasborough, PA|00461|5966 Palmer Prairie|8030|C|193
+49-3808531|44|Roberts Inc|Theodoreborough, DE|00088|6463 Douglas Walks|8020|C|194
+08-7900660|45|Lewis Group|East Manuel, AK|00314|8834 Long Valleys|8030|C|195
+19-2883562|45|Wilkinson, Santiago and Tanner|North Jessica, UT|00318|4498 Carter Ports|8030|C|196
+19-4340429|72|Brooks Inc|Port Seanshire, NE|00473|7448 Chelsea Center|8050|C|197
+89-5962158|45|Lee LLC|Brandonfort, NC|00107|476 Russell Court|8010|C|198
+18-0458673|31|Conway-Salazar|Garciafort, UT|00471|3467 Linda Mountains|8032|C|199
+79-3237391|11|Romero-Meyers|East Katelyn, WA|00041|2103 Taylor Courts|8030|C|200

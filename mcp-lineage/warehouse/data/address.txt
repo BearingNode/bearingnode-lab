@@ -1,0 +1,141 @@
+﻿street|postal_code|city|address_id|address_type|party_id
+8986 Samuel Mission|00159|Port Laurafort, AR|1|P|1
+7555 Tran Burgs|00147|Ronaldville, LA|2|P|2
+4202 Holly Curve|00253|Adamburgh, ID|3|P|3
+4334 Taylor Courts|00098|New Paul, NC|4|P|4
+2016 Thornton Station|00117|Hernandezberg, NH|5|P|5
+7126 Hart Port|00431|East Katelyn, WA|6|P|6
+2203 Alvarado Gardens|00241|Patrickmouth, AK|7|P|7
+4202 Burton Crescent|00172|Glenfurt, WV|8|P|8
+2240 Nicholas Burg|00007|Rodriguezshire, NV|9|P|9
+4097 Stein Field|00187|West Nicholas, DC|10|P|10
+8174 Russell Court|00487|North Brentfurt, SD|11|P|11
+9774 Brock Mission|00398|North Johntown, SC|12|P|12
+4698 Johnson Causeway|00235|North Brentfurt, SD|13|P|13
+5794 Adams Junctions|00366|Sarahberg, HI|14|P|14
+3851 Michael Shoal|00220|West Sarahshire, AZ|15|P|15
+4722 Craig Village|00036|Petersenton, IA|16|P|16
+4137 Perkins Place|00339|Laurabury, HI|17|P|17
+3317 Adrienne Gateway|00196|Weissburgh, DE|18|P|18
+3196 Steele Unions|00247|Port Ricardoberg, WA|19|P|19
+9254 Palmer Landing|00161|Jeanettetown, VA|20|P|20
+7898 Daniel Meadows|00201|Christophershire, MN|21|P|21
+3100 Adams Junctions|00317|Gabrielchester, OH|22|P|22
+1511 Michael Village|00100|Lake Mariafurt, DC|23|P|23
+2528 Jose Walk|00150|Dominicstad, NV|24|P|24
+6203 Kimberly Meadow|00189|Lake Scottbury, NM|25|P|25
+5263 Richard Squares|00208|New Brian, AL|26|P|26
+3115 Jeremy Union|00207|Galvanchester, NM|27|P|27
+9790 Cruz Turnpike|00314|Lake Lisa, ID|28|P|28
+9075 Holly Curve|00164|Hollyview, VA|29|P|29
+2111 Stein Field|00463|Lake Scottbury, NM|30|P|30
+6779 William Turnpike|00353|Rubioton, KS|31|P|31
+8656 Jones Pass|00330|East Anthony, SD|32|P|32
+4891 Eric Neck|00230|West Roseton, ME|33|P|33
+4677 Todd Harbor|00263|North Andrew, NJ|34|P|34
+4303 Hahn Neck|00041|Lake Debra, OK|35|P|35
+7355 Taylor Circles|00147|Ronaldville, LA|36|P|36
+9835 Gallegos Forks|00254|North Heatherbury, CO|37|P|37
+5846 Rich Squares|00425|Vanessatown, NC|38|P|38
+2639 Christopher Inlet|00000|Lake Amy, RI|39|P|39
+5417 Sullivan Greens|00085|Lake Catherine, FL|40|P|40
+5010 Rick Village|00440|North Lisa, UT|41|P|41
+3298 Alicia Parkways|00170|Lake John, UT|42|P|42
+4160 Allison Pass|00416|Hendricksburgh, NM|43|P|43
+9167 Todd Harbor|00096|Port Daniel, MA|44|P|44
+1964 Victoria Canyon|00369|Thompsonfurt, IN|45|P|45
+9126 Frank Crossroad|00459|Valeriestad, MO|46|P|46
+9540 Melissa Hills|00381|Andersonport, NM|47|P|47
+9478 Craig Village|00105|Barberchester, CA|48|P|48
+1161 William Turnpike|00237|Lawrencefurt, MD|49|P|49
+491 Paul Wall|00047|North Davidstad, MI|50|P|50
+4498 Allison Pass|00313|New Charlestown, TN|51|P|51
+2691 Alvarado Gardens|00180|West Candaceville, NH|52|P|52
+854 Brenda Cliffs|00461|Greenchester, ME|53|P|53
+3978 Kristen Islands|00320|South Belindaview, MI|54|P|54
+7370 Jeremy Shoal|00345|Jeanettetown, VA|55|P|55
+7049 Kathy Fields|00320|Robinmouth, ID|56|P|56
+8649 Steele Unions|00201|Lake Rebeccaburgh, MI|57|P|57
+8190 Richard Squares|00065|Hawkinsberg, MD|58|P|58
+7054 Francis Wall|00481|Lechester, TN|59|P|59
+965 Taylor Plaza|00058|Hartmanland, WA|60|P|60
+3729 Courtney Ports|00352|New Josephland, IL|61|P|61
+5383 Christine Brooks|00407|Katherineborough, NY|62|P|62
+6400 Robbins Hollow|00284|North Heatherbury, CO|63|P|63
+8770 Lopez Ports|00434|Phillipsmouth, LA|64|P|64
+6095 Wanda Trafficway|00221|Garciafort, UT|65|P|65
+5945 Turner Parkways|00408|Carrilloborough, NJ|66|P|66
+7294 Spencer Shore|00263|Lake Christopher, OR|67|P|67
+7017 Booth Trail|00005|West Roseton, ME|68|P|68
+9734 Jessica Station|00089|Glenfurt, WV|69|P|69
+604 Ryan Crest|00203|Lake Tiffany, MO|70|P|70
+7337 Nichols Canyon|00412|Thomasport, TN|71|P|71
+7440 Roberts Cliffs|00158|Christophershire, MN|72|P|72
+1806 Francis Isle|00204|Lake Kimberly, GA|73|P|73
+2147 Hart Port|00465|Vanessatown, NC|74|P|74
+6486 Flores Avenue|00231|Tiffanytown, HI|75|P|75
+849 Williamson Inlet|00464|Patrickmouth, AK|76|P|76
+4467 Thompson Ridge|00478|East Christopher, NV|77|P|77
+1106 Barbara Cliff|00270|Millerfort, OH|78|P|78
+133 John Pines|00224|North Jameschester, DE|79|P|79
+1071 Tiffany Views|00047|North Heatherbury, CO|80|P|80
+6946 Scott Place|00381|Dennisborough, ME|81|P|81
+6810 Kennedy Valley|00291|Dennisborough, ME|82|P|82
+2761 Greer Pines|00404|New Jesse, OR|83|P|83
+3639 Spencer Shore|00220|Lake Mariafurt, DC|84|P|84
+5138 Foster Rapids|00171|Jeffreyfort, AR|85|P|85
+6721 Kelly Row|00381|North Lindsay, WY|86|P|86
+2361 Caldwell Summit|00286|Patriciabury, AL|87|P|87
+303 Johnson Motorway|00474|Port Tracy, WY|88|P|88
+3890 Nancy Squares|00170|Lake John, UT|89|P|89
+8137 Chris Center|00398|South Thomasville, WV|90|P|90
+9043 Caldwell Summit|00118|Catherineport, FL|91|P|91
+3334 Frank Crossroad|00223|North Maryview, SC|92|P|92
+6396 Christopher Inlet|00060|Port Diana, HI|93|P|93
+6407 Collins Avenue|00310|East Christy, PA|94|P|94
+4867 Long Valleys|00203|East Christinaberg, AR|95|P|95
+7395 Kelly Row|00268|Gordonville, CO|96|P|96
+4360 Downs Haven|00487|Hernandezberg, NH|97|P|97
+7982 Fitzgerald Trafficway|00139|South Zacharyhaven, KY|98|P|98
+6287 Hahn Neck|00138|Guzmanton, OR|99|P|99
+3260 Kevin Square|00166|Murrayland, MS|100|P|100
+5750 Mary Bypass|00496|Christophershire, MN|101|P|101
+1047 Martin Well|00376|Port Cynthiatown, CT|102|P|102
+7960 Adams Junctions|00263|South Katherine, ND|103|P|103
+504 Cook Stream|00200|Hollandfort, NM|104|P|104
+5554 Nicholas Ville|00433|Frankfurt, OK|105|P|105
+1715 Johnson Drives|00296|Whitakerton, AK|106|P|106
+1358 Hamilton Mountains|00244|Andreahaven, LA|107|P|107
+8886 Brandon Squares|00422|Alicialand, TX|108|P|108
+6120 Caldwell Summit|00319|East Anthony, SD|109|P|109
+3445 Courtney Ports|00228|New Jacobburgh, WA|110|P|110
+7783 Scott Causeway|00404|Port James, CA|111|P|111
+1915 Burton Crescent|00282|Sarahberg, HI|112|P|112
+359 Bruce Circle|00350|Barberchester, CA|113|P|113
+3562 Meyers Tunnel|00335|Katherineborough, NY|114|P|114
+8445 Ricky Drives|00113|West Candaceville, NH|115|P|115
+1032 Jennifer Plaza|00481|Port Tracy, WY|116|P|116
+7881 Hawkins Shore|00114|Curryborough, WY|117|P|117
+2459 Long Valleys|00265|Henryfurt, SC|118|P|118
+2711 Rachel Motorway|00062|East Taylorview, WA|119|P|119
+8989 Francis Wall|00204|West Roseton, ME|120|P|120
+6123 Mark Dam|00299|Frankfurt, OK|121|P|121
+1001 Charles Trail|00399|North Karenside, CO|122|P|122
+9435 Scott Causeway|00473|Carrilloborough, NJ|123|P|123
+572 Nichols Canyon|00141|East Jamesshire, AK|124|P|124
+3896 Hector Run|00249|Davidland, AZ|125|P|125
+5556 David Crossroad|00216|North Thomas, ID|126|P|126
+7076 Little Wells|00193|East Ronaldborough, IN|127|P|127
+5687 Salazar Camp|00418|Christophershire, MN|128|P|128
+4496 Robert Lights|00092|Lake Alexanderville, DE|129|P|129
+8001 Taylor Courts|00166|East Scottmouth, OK|130|P|130
+3309 Samuel Mission|00070|South Belindaview, MI|131|P|131
+3007 Steele Unions|00272|Port Levifort, VA|132|P|132
+8402 William Turnpike|00459|Lake Amy, RI|133|P|133
+1047 Jeremy Union|00354|Jamesberg, NY|134|P|134
+49 Andrea Circle|00258|Thompsonfurt, IN|135|P|135
+4408 Johnson Causeway|00008|Parkershire, WY|136|P|136
+1213 Nicholas Burg|00021|Moniquechester, WY|137|P|137
+4579 Fitzgerald Trafficway|00095|Jessicaview, TX|138|P|138
+6588 Martinez Turnpike|00162|Robersonfurt, TX|139|P|139
+2367 Meyers Tunnel|00307|Guzmanton, OR|140|P|140

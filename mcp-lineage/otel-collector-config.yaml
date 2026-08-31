@@ -1,0 +1,71 @@
+# Deliberately lossy, by design — this is the point being demonstrated.
+# Software observability tooling samples because it can afford to; this
+# config keeps only ~10% of traces to make that visible against Marquez,
+# which receives every OpenLineage event with no equivalent knob.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  tail_sampling:
+    decision_wait: 5s
+    policies:
+      # RAID R09, and the reason this policy is first: sampling is what makes a
+      # trace reference dangle. A trace that recorded *lineage being lost* is
+      # the one an operator will come looking for, so it must never be the nine
+      # in ten that were thrown away. Keep those unconditionally; sample the
+      # rest. Losing the record of a loss is the failure mode twice over.
+      - name: always-keep-lineage-loss
+        type: string_attribute
+        string_attribute:
+          key: lineage.dropped
+          values: ["true"]
+      # The broader form of the same idea, and a candidate position for the RFC:
+      # any span that produced an OpenLineage event carries `lineage.run_id`, so
+      # this keeps every trace in which an agent touched governed data, at any
+      # sampling rate. The consequence is the one that matters — a trace
+      # reference on a lineage event *always resolves*, which is R09 leg (b)
+      # answered rather than mitigated. Sampling remains an economic decision
+      # for ordinary traffic; a governed data interaction is not ordinary
+      # traffic and is not subject to it.
+      - name: always-keep-data-access
+        type: ottl_condition
+        ottl_condition:
+          span:
+            - 'attributes["lineage.run_id"] != nil'
+      - name: ten-percent-sample
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+  batch: {}
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  # Metrics have no backend in this demo. RAID D12 says lineage *absence* must
+  # surface on the telemetry plane, so the counters have to go somewhere an
+  # operator can read — here, the collector's own log
+  # (`docker compose logs otel-collector`). A real deployment routes these to
+  # Prometheus or equivalent; the demo only has to prove the signal exists.
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling, batch]
+      exporters: [otlp/jaeger]
+    # Without this pipeline the `mcp_lineage.events.dropped` counter is emitted
+    # by the server and discarded by the collector — the loss signal itself
+    # lost, silently. Found while implementing RAID I29.
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

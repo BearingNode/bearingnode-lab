@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What each signal carries — and what neither does — BearingNode</title>
+<style>
+/* Roboto per the brand guidelines, embedded as a data: URI because the Wix HTML
+   element is a sandboxed iframe with no allow-same-origin, where a hosted font
+   cannot be fetched. Single variable file, Latin subset, covers 100-900. */
+@font-face {
+  font-family: 'Roboto';
+  src: url(data:font/woff2;base64,__ROBOTO_B64__) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* BearingNode brand guidelines. Off White is a primary colour; #000000 is not
+     in the palette at all, which is why this figure moved off a black ground. */
+  --navy: #001240;
+  --azure: #1338BE;
+  --cornflower: #668FF2;
+  --persimmon: #F26422;
+  --offwhite: #F5F5F5;
+  --ink: #132C4B;
+  --rule: #D3DAE3;
+  --muted: #5A6678;
+  --slate: #965EF0;          /* Medium Slate Blue — the OpenTelemetry set */
+  --slate-tint: #B28FF0;
+  --persimmon-wash: #FFF0DF;
+  --persimmon-dark: #9B3F00;
+
+  /* Euler geometry. These are tuned against the containment check in checks.js
+     — every item must sit inside the region it claims — not chosen by eye.
+     The two paddings are in cqw, not vw: the diagram's width no longer tracks
+     the viewport now that a fixed-width rail sits beside it, and containment is
+     a property of the diagram's own box. Fallbacks are the pre-container-query
+     vw values, which are correct at the full-bleed width. */
+  --lens: 30%;        /* where each ellipse stops; the lens is 100% - 2*lens wide */
+  --pad-y: clamp(60px, 11vw, 130px);   /* room so rows sit in the fat middle of a lobe */
+  --side-pad: clamp(16px, 4.2vw, 50px); /* inset from the lobe's outer curve */
+  --col-side: 30%;    /* columns match the geometry: exclusive | lens | exclusive */
+  --col-centre: 40%;
+  /* The centre column's left edge sits exactly on the OpenLineage ellipse's
+     leftmost point, so at y = centre it is on the boundary and everywhere else
+     outside it. This inset is what buys the lens back, and it has to grow with
+     the diagram: the ellipses widen faster than they get taller, so the lens
+     becomes a narrower vertical sliver as the figure gets wider. */
+  --centre-pad: clamp(8px, 1.7vw, 20px);
+}
+@supports (width: 1cqw) {
+  /* The narrow end of the with-rail range is the binding case, not the wide end:
+     at ~750px the outer columns wrap onto more lines while the ellipse gets no
+     taller, so the top and bottom of each column leave its lobe. Hence a steep
+     cqw slope with a cap, rather than a gentler slope. */
+  .euler { --pad-y: clamp(60px, 18cqw, 140px); --side-pad: clamp(16px, 8cqw, 66px); --centre-pad: clamp(10px, 6cqw, 76px); }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  background: #fff; color: var(--ink); line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: clamp(16px, 2.2vw, 32px); }
+
+h1 { margin: 0 0 6px; font-size: clamp(20px, 2.5vw, 32px); font-weight: 700; color: var(--navy); line-height: 1.15; }
+.sub { margin: 0 0 clamp(14px, 1.8vw, 22px); font-size: clamp(13px, 1.25vw, 17px); max-width: 92ch; }
+
+/* ---------- controls ---------- */
+.controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: clamp(10px, 1.2vw, 14px);
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--offwhite);
+  margin-bottom: clamp(14px, 1.8vw, 20px);
+}
+.ctl-label { font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+button {
+  font: inherit; font-size: clamp(12px, 1.05vw, 14px);
+  color: var(--navy); background: #fff; border: 1px solid var(--rule);
+  border-radius: 7px; padding: 8px 12px; cursor: pointer;
+}
+.controls button:hover { border-color: var(--azure); }
+button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+/* Scoped to the control bar: the region items are also <button>s, and an
+   unscoped rule painted a solid azure block behind the selected item. */
+.controls button[aria-pressed="true"], .controls button.on { background: var(--azure); border-color: var(--azure); color: #fff; font-weight: 700; }
+.ctl-group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+@media (max-width: 720px) { .ctl-group { margin-left: 0; } }
+
+/* ---------- layout ---------- */
+/* The rail is a fixed 240px, not a percentage. A proportional rail took 335px at
+   the desktop maximum and left the diagram 715px — narrower than the 852px the
+   same diagram gets when it stacks at 940px, which is the wrong way round. At a
+   fixed 240 the diagram gets ~810px and still keeps the detail beside it.
+   The breakpoint is deliberately high: below it a rail would cost the diagram
+   more width than reading the detail alongside is worth, so it goes underneath. */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(14px, 1.8vw, 20px); align-items: start; }
+@media (min-width: 1060px) { .layout { grid-template-columns: minmax(0, 1fr) 240px; } }
+.rail { display: grid; gap: clamp(12px, 1.4vw, 16px); align-content: start; }
+
+.frame { border: 1px solid var(--rule); border-radius: 12px; padding: clamp(12px, 1.6vw, 22px); min-width: 0; }
+/* Sentence case, not a letterspaced label: the frame is the universal set, and
+   the caption has to state that outright or the empty fourth region below reads
+   as a loose bullet list rather than as "inside the interaction, outside both". */
+.frame__cap {
+  text-align: center; font-size: clamp(11px, 1vw, 13.5px);
+  color: var(--muted); margin: 0 0 clamp(10px, 1.4vw, 18px);
+}
+.frame__cap strong { color: var(--navy); font-weight: 700; }
+.frame__cap .mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; font-size: 0.94em; }
+
+/* ---------- the two sets, drawn in CSS so the browser lays the text out ---------- */
+.euler { position: relative; container-type: inline-size; }
+.euler__shapes { position: absolute; inset: 0; pointer-events: none; }
+.euler__shapes span {
+  position: absolute; top: 0; bottom: 0; border-radius: 50%;
+  mix-blend-mode: multiply;
+}
+/* The lens has to be wider than the centre column, and each lobe taller than its
+   text, or content lands outside the region it claims to be in. Verified by the
+   containment check in checks.js, not by eye. */
+.euler__shapes .s-otel { left: 0; right: var(--lens); background: rgba(150, 94, 240, 0.20); border: 2px solid rgba(150, 94, 240, 0.55); }
+.euler__shapes .s-ol   { left: var(--lens); right: 0;  background: rgba(19, 56, 190, 0.16); border: 2px solid rgba(19, 56, 190, 0.50); }
+
+.regions {
+  position: relative;
+  display: grid; grid-template-columns: var(--col-side) var(--col-centre) var(--col-side);
+  gap: 0;
+  /* generous vertical padding keeps every row in the fat middle of the ellipse */
+  padding: var(--pad-y) 0;
+  align-items: center;   /* puts each column in the widest band of its lobe */
+}
+.region { min-width: 0; }
+.region--otel { padding-left: var(--side-pad); padding-right: 6px; }
+.region--ol   { padding-right: var(--side-pad); padding-left: 6px; }
+.region--both { text-align: center; padding: 0 var(--centre-pad); }
+.region--both .item { text-align: left; }
+
+.region__h { margin: 0 0 2px; font-size: clamp(14px, 1.5vw, 21px); font-weight: 700; color: var(--navy); }
+/* Official project marks, used unmodified to identify each standard.
+   Sized by WIDTH, not height: the two lockups have very different aspect ratios
+   (2.67 against 5.28), so matching heights renders the OpenTelemetry wordmark a
+   third the size of OpenLineage's and illegible. */
+.region__brand { margin: 0 0 6px; }
+.region__brand svg { display: block; width: clamp(104px, 13vw, 148px); height: auto; max-width: 100%; }
+.region__sub { margin: 0 0 clamp(8px, 1.1vw, 14px); font-size: clamp(11px, 1vw, 14px); color: var(--muted); }
+.region__foot { margin: clamp(8px, 1.1vw, 14px) 0 0; font-size: clamp(11px, 1.05vw, 15px); font-weight: 700; color: var(--navy); }
+.region__note { margin: 6px 0 0; font-size: clamp(10px, 0.9vw, 12.5px); color: var(--muted); }
+.euler__note { margin-top: clamp(8px, 1.2vw, 14px); text-align: center; }
+@media (max-width: 760px) { .euler__note { text-align: left; } }
+
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: clamp(3px, 0.5vw, 7px); }
+.item {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 8px; align-items: start;
+  font-size: clamp(10.5px, 1.02vw, 14px);
+  background: none; border: 0; padding: 2px 0; text-align: left; color: inherit; cursor: pointer;
+  border-radius: 4px;
+}
+.item:hover, .item.on { color: var(--azure); }
+.item:focus-visible { outline: 2px solid var(--azure); outline-offset: 1px; }
+.item .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.42em; }
+.item--otel .dot { background: var(--slate); }
+.item--both .dot { background: var(--muted); }
+.item--ol   .dot { background: var(--azure); }
+.item .mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.94em; overflow-wrap: anywhere; }
+.item .sub { display: block; font-size: 0.86em; color: var(--muted); }
+.item.faded { opacity: 0.26; }
+.item.lit { color: var(--azure); font-weight: 700; }
+
+/* ---------- the gap ---------- */
+/* This is the fourth region: inside the frame, outside both ellipses. A 3px
+   dashed border read as an alert, which is the wrong note — the emptiness is
+   the finding, not a warning. Kept dashed, because the region has no boundary
+   drawn for it by either standard, but quietened to the weight of the ellipse
+   outlines so all four regions carry the same visual authority. */
+.gap {
+  margin-top: clamp(14px, 2vw, 24px);
+  border: 2px dashed var(--persimmon); border-radius: 8px;
+  background: var(--persimmon-wash); padding: clamp(12px, 1.6vw, 20px);
+}
+.gap__h { margin: 0 0 clamp(8px, 1vw, 12px); font-size: clamp(14px, 1.4vw, 20px); font-weight: 700; color: var(--persimmon-dark); }
+.gap .items { gap: clamp(6px, 0.8vw, 10px); }
+.gap .item { grid-template-columns: 12px minmax(0, 1fr); font-size: clamp(11px, 1.05vw, 14.5px); }
+.gap .item .dot { width: 9px; height: 9px; border-radius: 50%; background: none; border: 1.6px solid var(--persimmon); }
+.gap__rfc { margin: clamp(10px, 1.3vw, 16px) 0 0; font-weight: 700; color: var(--persimmon-dark); font-size: clamp(11px, 1.05vw, 15px); }
+
+/* ---------- stacked view, below the wrap point ---------- */
+/* The overlapping-set geometry is unreadable in a narrow column, so below this
+   width the same four regions become labelled blocks, rendered from the same data. */
+@media (max-width: 760px) {
+  .euler__shapes { display: none; }
+  .regions { grid-template-columns: minmax(0, 1fr); gap: clamp(10px, 2.5vw, 16px); padding: 0; }
+  .region--otel, .region--ol, .region--both { padding-left: clamp(10px, 3vw, 16px); padding-right: clamp(10px, 3vw, 16px); }
+  .region { border: 1px solid var(--rule); border-left-width: 5px; border-radius: 8px; padding: clamp(10px, 3vw, 16px); }
+  .region--otel { border-left-color: var(--slate); padding-left: clamp(10px, 3vw, 16px); }
+  .region--both { border-left-color: var(--muted); text-align: left; }
+  .region--ol   { border-left-color: var(--azure); padding-right: clamp(10px, 3vw, 16px); }
+}
+
+/* ---------- detail panel ---------- */
+.panel { border: 1px solid var(--rule); border-radius: 12px; background: var(--offwhite); padding: clamp(14px, 1.6vw, 20px); align-self: start; }
+.panel h2 { margin: 0 0 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+#d-name { margin: 0 0 4px; font-size: clamp(14px, 1.25vw, 17px); font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+#d-name.mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; font-weight: 400; }
+#d-set { margin: 0 0 12px; font-size: clamp(11px, 1vw, 13px); color: var(--muted); }
+#d-body { margin: 0 0 12px; font-size: clamp(12px, 1.05vw, 14px); }
+#d-meta { margin: 0; font-size: clamp(11px, 0.95vw, 13px); }
+#d-meta div { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; padding: 3px 0; border-top: 1px solid var(--rule); }
+#d-meta dt { color: var(--muted); }
+#d-meta dd { margin: 0; overflow-wrap: anywhere; }
+.narrate { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); font-size: clamp(11px, 1vw, 13.5px); color: var(--navy); }
+.narrate:empty { display: none; }
+
+/* ---------- legend ---------- */
+/* Restored: the rebuild dropped it. The dots are the only thing that tells a
+   reader which set an item belongs to once the figure is a static image, so it
+   is not decoration. It shares the rail because a fixed 240px rail otherwise
+   leaves most of a screen height empty beside the diagram. */
+.legend { border: 1px solid var(--rule); border-radius: 12px; padding: clamp(12px, 1.4vw, 16px); }
+.legend h2 { margin: 0 0 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+.legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 8px; align-items: start; font-size: clamp(11px, 1vw, 13px); }
+.legend .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.42em; }
+.legend .dot--otel { background: var(--slate); }
+.legend .dot--both { background: var(--muted); }
+.legend .dot--ol   { background: var(--azure); }
+.legend .dot--gap  { background: none; border: 1.6px solid var(--persimmon); width: 9px; height: 9px; }
+/* Below the rail breakpoint the legend sits under the figure, where it can run
+   across the full width instead of down a narrow column. */
+@media (min-width: 620px) and (max-width: 1059px) {
+  .legend ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px clamp(12px, 2vw, 24px); }
+}
+
+/* ---------- static export ---------- */
+/* The PNG in the repo README, and any print use. The control bar and the detail
+   panel are instructions to click things: in a still they are dead furniture,
+   and the panel's placeholder — "Select anything in the diagram" — is worse than
+   dead, it tells the reader to do something the artefact cannot do. The legend
+   stays, because in a still it is the only thing identifying the dots.
+   Set by the exporter, and by print, so the two cannot drift apart.
+   Any prose that tells the reader to click something carries `.live-only` for
+   the same reason — the strapline's "select any of them for its definition"
+   was left behind on the first export and is exactly the kind of thing that
+   makes a still look unconsidered.
+   The rail also collapses: with the panel gone it would reserve 240px for a
+   legend alone, and the diagram would be 828px beside a column of white. Single
+   column gives it 977px and puts the legend underneath, two-up. */
+.static .controls, .static .panel, .static .live-only { display: none; }
+.static .layout { grid-template-columns: minmax(0, 1fr); }
+.static .legend ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px clamp(12px, 2vw, 24px); }
+@media print { .controls, .panel, .live-only { display: none; } }
+
+/* The static type scale, and why it is not the live one.
+   Every size in this figure is clamp(min, Nvw, max), which is correct for a page
+   the reader sizes themselves. An export is a different medium: it is rendered
+   once at a chosen width and then *scaled down* by whatever displays it. GitHub
+   fits a README image to a ~890px column, so a figure authored at 1180 arrives
+   at 0.754 scale — 12px attribute names become 9.1px, and the sub-lines 7.8px.
+   Exporting narrower does not help, because the vw terms shrink with it: at 940
+   the same names are 10.5px, the clamp floor.
+   This is not a raster problem. A vector export scaled into the same column has
+   identical 9px text, merely sharper. So the fix is a type scale of its own,
+   fixed rather than fluid, sized for a 940px export landing in an 890px column.
+   Re-verify containment after touching these — larger type means taller columns,
+   which is what pushes items out of their lobe. */
+.static { --pad-y: clamp(60px, 21cqw, 190px); }
+.static h1 { font-size: 29px; }
+.static .sub { font-size: 15.5px; }
+.static .frame__cap { font-size: 13px; }
+.static .region__h { font-size: 19px; }
+.static .region__sub { font-size: 12.5px; }
+.static .region__foot { font-size: 14px; }
+.static .region__note { font-size: 11.5px; }
+.static .item { font-size: 13.5px; }
+.static .item .sub { font-size: 0.84em; }
+.static .gap__h { font-size: 19px; }
+.static .gap .item { font-size: 13.5px; }
+.static .gap__rfc { font-size: 14px; }
+.static .legend h2 { font-size: 12px; }
+.static .legend li { font-size: 13px; }
+.static .prov { font-size: 11.5px; }
+.static .foot__meta { font-size: 12px; }
+
+/* ---------- footer ---------- */
+.prov { margin: clamp(18px, 2.2vw, 26px) 0 0; font-size: clamp(10px, 0.92vw, 12.5px); color: var(--muted); }
+.prov .mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; }
+.foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: clamp(10px, 1.5vw, 20px);
+  margin-top: clamp(14px, 1.8vw, 22px); padding-top: clamp(14px, 1.8vw, 22px);
+  border-top: 1px solid var(--rule);
+}
+.foot__logo { flex: 0 0 auto; width: clamp(150px, 17vw, 210px); }
+.foot__logo svg { display: block; width: 100%; height: auto; }
+.foot__meta { text-align: right; font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); }
+.foot__meta span { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap" id="fig">
+
+  <h1>What each signal carries — and what neither does</h1>
+  <p class="sub">One agent tool call against a Postgres warehouse, over MCP. Every attribute and facet name
+    below is as defined today<span class="live-only"> — select any of them for its definition and source</span>.</p>
+
+  <div class="controls">
+    <span class="ctl-label">Worked example</span>
+    <button type="button" data-step="1">1 · read private_party</button>
+    <button type="button" data-step="2">2 · read premium</button>
+    <button type="button" data-step="3">3 · agent computes AVG</button>
+    <button type="button" data-step="0">Reset</button>
+    <span class="ctl-group"><span class="ctl-label">Collector</span><button type="button" id="sample" aria-pressed="false">Apply 10% tail sampling</button></span>
+  </div>
+
+  <div class="layout">
+    <div class="frame">
+      <p class="frame__cap">Everything inside this box is <strong>one agent tool call</strong> — agent → MCP <span class="mono">tools/call</span> → data</p>
+
+      <div class="euler">
+        <div class="euler__shapes" aria-hidden="true"><span class="s-otel"></span><span class="s-ol"></span></div>
+        <div class="regions">
+          <div class="region region--otel">
+            <p class="region__brand">__OTEL_LOGO__</p>
+            <p class="region__sub">the MCP / GenAI span</p>
+            <ul class="items" id="col-otel"></ul>
+            <p class="region__foot">Sampled. Lossy by design.</p>
+          </div>
+          <div class="region region--both">
+            <p class="region__h">Both</p>
+            <p class="region__sub">correlated — never derived</p>
+            <ul class="items" id="col-both"></ul>
+          </div>
+          <div class="region region--ol">
+            <p class="region__brand">__OL_LOGO__</p>
+            <p class="region__sub">the RunEvent + facets</p>
+            <ul class="items" id="col-ol"></ul>
+            <p class="region__foot">Complete. Never sampled.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footnote for the asterisk. Deliberately outside the set geometry: it
+           explains an item, it is not a member of the intersection. -->
+      <p class="region__note euler__note">* OTel: <span class="mono">mcp.resource.uri</span>, on
+        <span class="mono">resources/read</span> only. OpenLineage: canonical dataset identity, on every event.</p>
+
+      <div class="gap">
+        <p class="gap__h">Neither — no mechanism exists today</p>
+        <ul class="items" id="col-gap"></ul>
+        <p class="gap__rfc">This is the RFC. · OpenLineage #4484 · MCP #2638</p>
+      </div>
+    </div>
+
+    <div class="rail">
+      <aside class="panel" aria-live="polite">
+        <h2>Detail</h2>
+        <p id="d-name">Nothing selected</p>
+        <p id="d-set"></p>
+        <p id="d-body">Select anything in the diagram to see how it is defined, at what requirement level, and
+          in which source file.</p>
+        <dl id="d-meta"></dl>
+        <p class="narrate" id="d-narrate"></p>
+      </aside>
+
+      <div class="legend">
+        <h2>Legend</h2>
+        <ul>
+          <li><span class="dot dot--otel"></span><span>OpenTelemetry / MCP semantic convention</span></li>
+          <li><span class="dot dot--ol"></span><span>OpenLineage facet</span></li>
+          <li><span class="dot dot--both"></span><span>Carried by both, correlated on trace and span id</span></li>
+          <li><span class="dot dot--gap"></span><span>No mechanism exists today</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <p class="prov">
+    Verified 2026-07-27 against <span class="mono">open-telemetry/semantic-conventions-genai</span>
+    (<span class="mono">model/mcp</span>, <span class="mono">model/gen-ai</span>),
+    <span class="mono">open-telemetry/semantic-conventions</span> (<span class="mono">model/enduser</span>),
+    and the OpenLineage Python client's generated facets. All GenAI and MCP attributes are stability
+    <strong>development</strong> — none are stable, and all may still change.<br>
+    OpenTelemetry and OpenLineage marks are trademarks of the CNCF and the LF AI &amp; Data Foundation
+    respectively, reproduced unmodified to identify each project.
+  </p>
+
+  <footer class="foot">
+    <div class="foot__logo" aria-label="BearingNode">__LOGO_SVG__</div>
+    <div class="foot__meta">
+      <span>Data &amp; Information Observability · mcp-lineage</span>
+      <span>© 2026 BearingNode</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+__DATA__
+
+(function () {
+  "use strict";
+
+  var byId = {};
+  ITEMS.forEach(function (it) { byId[it.id] = it; });
+
+  // One render pass feeds both the overlapping-set view and the stacked view;
+  // CSS decides which geometry is shown, so the two can never disagree.
+  function render() {
+    ['otel', 'both', 'ol', 'gap'].forEach(function (col) {
+      var host = document.getElementById('col-' + col);
+      host.innerHTML = '';
+      ITEMS.filter(function (it) { return it.col === col; }).forEach(function (it) {
+        var li = document.createElement('li');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'item item--' + col;
+        btn.dataset.id = it.id;
+        var dot = document.createElement('span');
+        dot.className = 'dot';
+        var label = document.createElement('span');
+        var text = document.createElement('span');
+        if (it.mono) {
+          text.className = 'mono';
+          // Offer break opportunities after the separators so a long attribute
+          // name wraps as mcp.response. / status_code rather than mid-token, and
+          // at CamelCase boundaries so a facet name wraps as ColumnLineage /
+          // DatasetFacet rather than ColumnLineageDatasetFace / t.
+          text.textContent = it.label
+            .replace(/([._/])/g, '$1\u200B')
+            .replace(/([a-z0-9])([A-Z])/g, '$1\u200B$2');
+        } else {
+          text.textContent = it.label;
+        }
+        label.appendChild(text);
+        if (it.sub) {
+          var sub = document.createElement('span');
+          sub.className = 'sub';
+          sub.textContent = it.sub;
+          label.appendChild(sub);
+        }
+        btn.appendChild(dot);
+        btn.appendChild(label);
+        li.appendChild(btn);
+        host.appendChild(li);
+      });
+    });
+  }
+
+  function show(id) {
+    var it = byId[id];
+    if (!it) return;
+    var name = document.getElementById('d-name');
+    name.textContent = it.label;
+    name.className = it.mono ? 'mono' : '';
+    document.getElementById('d-set').textContent = it.set || '';
+    document.getElementById('d-body').textContent = it.body || '';
+    var meta = document.getElementById('d-meta');
+    meta.innerHTML = '';
+    [['Level', it.req], ['Stability', it.stability], ['Source', it.src]].forEach(function (pair) {
+      if (!pair[1] || pair[1] === '—') return;
+      var row = document.createElement('div');
+      var dt = document.createElement('dt'); dt.textContent = pair[0];
+      var dd = document.createElement('dd'); dd.textContent = pair[1];
+      row.appendChild(dt); row.appendChild(dd); meta.appendChild(row);
+    });
+    document.querySelectorAll('.item').forEach(function (b) { b.classList.toggle('on', b.dataset.id === id); });
+  }
+
+  function applyStep(step) {
+    var lit = STEP_ITEMS[step] || [];
+    document.querySelectorAll('.item').forEach(function (b) {
+      b.classList.toggle('lit', lit.indexOf(b.dataset.id) !== -1);
+    });
+    document.getElementById('d-narrate').textContent = NARRATION[step] || '';
+    document.querySelectorAll('[data-step]').forEach(function (b) {
+      b.classList.toggle('on', String(step) === b.dataset.step && step !== 0);
+    });
+  }
+
+  function applySampling(on) {
+    document.querySelectorAll('.item').forEach(function (b) {
+      b.classList.toggle('faded', on && SAMPLED_AWAY.indexOf(b.dataset.id) !== -1);
+    });
+  }
+
+  render();
+
+  document.addEventListener('click', function (e) {
+    var item = e.target.closest('.item');
+    if (item) { show(item.dataset.id); return; }
+    var step = e.target.closest('[data-step]');
+    if (step) { applyStep(Number(step.dataset.step)); return; }
+    var samp = e.target.closest('#sample');
+    if (samp) {
+      var on = samp.getAttribute('aria-pressed') !== 'true';
+      samp.setAttribute('aria-pressed', String(on));
+      applySampling(on);
+    }
+  });
+
+  // Wix sizes the iframe from outside and cannot read our height across the
+  // sandbox boundary, so report it. postMessage crosses an opaque origin.
+  var last = 0;
+  function reportHeight() {
+    var h = Math.ceil(document.getElementById('fig').getBoundingClientRect().height);
+    if (h === last) return;
+    last = h;
+    try { parent.postMessage({ type: 'bn-figure-height', height: h }, '*'); } catch (e) {}
+  }
+  addEventListener('load', reportHeight);
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.getElementById('fig'));
+  if (document.fonts) document.fonts.ready.then(reportHeight);
+})();
+</script>
+</body>
+</html>
