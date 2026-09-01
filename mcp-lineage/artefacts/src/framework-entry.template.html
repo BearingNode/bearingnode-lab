@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where an agent's data access enters the framework — BearingNode</title>
+<style>
+/* Roboto, per the BearingNode brand guidelines. Embedded as a data: URI rather
+   than linked, because the Wix HTML element renders in a sandboxed iframe with
+   no allow-same-origin, where an externally-hosted font cannot be fetched.
+   Verified: a data: URI font resolves inside sandbox="allow-scripts".
+   Single variable file, Latin subset, covers 100-900. */
+@font-face {
+  font-family: 'Roboto';
+  src: url(data:font/woff2;base64,__ROBOTO_B64__) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* Brand palette — BearingNode brand guidelines */
+  --navy: #001240;
+  --azure: #1338BE;
+  --cornflower: #668FF2;
+  --persimmon: #F26422;
+  --offwhite: #F5F5F5;
+  --navy-tint: #132C4B;
+  --navy-tint-2: #D3DAE3;
+  /* documented blue tint ramp, dark to light */
+  --blue-1: #113BEF; --blue-2: #4E6EF4; --blue-3: #617DF5; --blue-4: #90A4F8; --blue-5: #ACBBFA;
+  /* Foundational-layer teals follow the framework depiction and are NOT in the
+     brand guidelines. Pending sign-off with issue #19. */
+  --teal-1: #1D4F4F; --teal-2: #2E8F92; --teal-3: #55BFC1; --teal-4: #6FC9CB; --teal-5: #A3DDDE;
+  --teal-ink: #0E3538;
+  --ink: #132C4B;
+  --muted: #5A6678;
+  --persimmon-wash: #FFF0DF;
+  --persimmon-dark: #9B3F00;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+.fig {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.2vw, 32px);
+}
+
+/* ---------- heading ---------- */
+.fig__title {
+  margin: 0 0 6px;
+  font-size: clamp(20px, 2.5vw, 32px);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.15;
+}
+.fig__sub {
+  margin: 0 0 clamp(16px, 2vw, 26px);
+  font-size: clamp(13px, 1.25vw, 17px);
+  color: var(--ink);
+  max-width: 92ch;
+}
+
+/* ---------- connected-cube reference ---------- */
+.cube {
+  display: flex;
+  gap: clamp(12px, 1.6vw, 22px);
+  align-items: flex-start;
+  background: var(--offwhite);
+  border: 1px solid var(--navy-tint-2);
+  border-radius: 8px;
+  padding: clamp(12px, 1.6vw, 20px);
+  margin-bottom: clamp(18px, 2.2vw, 28px);
+}
+.cube__glyph { flex: 0 0 auto; width: clamp(56px, 7vw, 96px); }
+.cube__glyph svg { display: block; width: 100%; height: auto; }
+.cube__body { min-width: 0; }
+.cube__h { margin: 0 0 6px; font-size: clamp(14px, 1.35vw, 17px); font-weight: 700; color: var(--navy); }
+.cube__p { margin: 0 0 4px; font-size: clamp(12px, 1.15vw, 15px); }
+.cube__p--key { margin-top: 8px; font-weight: 700; color: var(--navy); }
+
+/* ---------- layout: section beside its note, stacking on narrow ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(14px, 1.8vw, 22px); align-items: start; }
+@media (min-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr) clamp(240px, 26%, 320px); column-gap: clamp(18px, 2vw, 28px); }
+}
+
+.band {
+  border-radius: 5px;
+  padding: clamp(7px, 0.9vw, 11px) 12px;
+  text-align: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: clamp(14px, 1.5vw, 21px);
+}
+.band--core { background: var(--azure); margin-bottom: clamp(10px, 1.2vw, 16px); }
+.band--fnd  { background: var(--teal-1); margin-bottom: clamp(10px, 1.2vw, 16px); }
+
+/* ---------- core capabilities: box and its arrow share a cell ---------- */
+.core { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(6px, 0.8vw, 12px); }
+@media (max-width: 560px) { .core { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.core__cell { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.cap {
+  width: 100%;
+  border-radius: 5px;
+  padding: clamp(12px, 1.6vw, 22px) 4px;
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(12px, 1.3vw, 19px);
+  color: #fff;
+}
+.cap--1 { background: var(--blue-1); }
+.cap--2 { background: var(--blue-2); }
+.cap--3 { background: var(--blue-3); }
+.cap--4 { background: var(--blue-4); color: var(--navy); }
+.cap--5 { background: var(--blue-5); color: var(--navy); }
+
+/* upward arrow: stem plus head, drawn in CSS so it scales with the layout */
+.arrow { display: flex; flex-direction: column; align-items: center; }
+.arrow::before {
+  content: ""; order: 2;
+  width: 3px; height: clamp(16px, 2.4vw, 34px);
+  background: var(--navy);
+}
+.arrow::after {
+  content: ""; order: 1;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid var(--navy);
+}
+.arrow--core { margin-top: clamp(8px, 1vw, 14px); }
+
+/* When the core grid wraps, a per-box arrow sits between rows and the figure
+   reads as a chain (Govern -> Track -> Value) rather than five parallel
+   dependencies. Below the wrap point, collapse to one arrow for the whole set. */
+.core__all { display: none; }
+@media (max-width: 560px) {
+  .core__cell .arrow { display: none; }
+  .core__all { display: block; margin-top: clamp(10px, 2.5vw, 16px); }
+}
+.arrow--chain { margin: clamp(3px, 0.5vw, 6px) 0; }
+.arrow--chain::before { width: 2px; height: clamp(8px, 1.1vw, 14px); background: var(--teal-ink); }
+.arrow--chain::after { border-bottom-color: var(--teal-ink); border-left-width: 6px; border-right-width: 6px; border-bottom-width: 9px; }
+.arrow--enter { margin: clamp(8px, 1.1vw, 14px) 0; }
+
+/* ---------- foundational capabilities ---------- */
+.fnd { display: flex; flex-direction: column; }
+.bar {
+  border-radius: 5px;
+  padding: clamp(9px, 1.2vw, 15px) 10px;
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(13px, 1.4vw, 19px);
+}
+.bar--analyse { background: var(--teal-1); color: #fff; }
+.bar--store   { background: var(--teal-2); color: #fff; }
+.bar--alert   { background: var(--teal-3); color: var(--teal-ink); }
+.bar--collect { background: var(--teal-4); color: var(--teal-ink); }
+.bar--connect { background: var(--teal-5); color: var(--teal-ink); }
+
+/* the two capabilities where the chain breaks, grouped */
+.break {
+  display: flex; flex-direction: column;
+  border: 3px dashed var(--persimmon);
+  border-radius: 6px;
+  padding: clamp(6px, 0.8vw, 10px);
+}
+
+/* ---------- notes ---------- */
+.note { font-size: clamp(12px, 1.05vw, 15px); }
+.note__h { margin: 0 0 6px; font-size: clamp(13px, 1.15vw, 16px); font-weight: 700; color: var(--navy); }
+.note p { margin: 0 0 6px; }
+.note strong { color: var(--navy); }
+.note--break {
+  background: var(--persimmon-wash);
+  border: 2px solid var(--persimmon);
+  border-radius: 6px;
+  padding: clamp(10px, 1.2vw, 16px);
+}
+.note--break .note__h { color: var(--persimmon-dark); }
+.note--source { color: var(--muted); font-size: clamp(11px, 0.95vw, 13px); }
+.note--source p { margin: 0 0 8px; }
+
+/* ---------- signals and the originating call ---------- */
+.signals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1vw, 16px); }
+@media (max-width: 560px) { .signals { grid-template-columns: minmax(0, 1fr); } }
+.signal {
+  background: var(--offwhite);
+  border: 1px solid var(--navy-tint-2);
+  border-radius: 6px;
+  padding: clamp(10px, 1.3vw, 18px);
+  min-width: 0;
+}
+.signal__h { margin: 0 0 6px; font-weight: 700; color: var(--navy); font-size: clamp(13px, 1.15vw, 16px); }
+.signal__types {
+  margin: 0 0 8px;
+  font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: clamp(11px, 1vw, 14px);
+  overflow-wrap: anywhere;
+}
+.signal__note { margin: 0; font-size: clamp(11px, 0.95vw, 13px); color: var(--muted); }
+.origin {
+  background: var(--navy);
+  color: #fff;
+  border-radius: 6px;
+  padding: clamp(11px, 1.4vw, 16px) 10px;
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(13px, 1.35vw, 19px);
+  overflow-wrap: anywhere;
+}
+.enter-label { text-align: center; font-weight: 700; font-size: clamp(12px, 1.1vw, 15px); color: var(--navy); }
+
+/* ---------- footer: one band, shared centre line ---------- */
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: clamp(10px, 1.5vw, 20px);
+  margin-top: clamp(22px, 2.6vw, 34px);
+  padding-top: clamp(14px, 1.8vw, 22px);
+  border-top: 1px solid var(--navy-tint-2);
+}
+.foot__logo { flex: 0 0 auto; width: clamp(150px, 17vw, 210px); }
+.foot__logo svg { display: block; width: 100%; height: auto; }
+.foot__meta { text-align: right; font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); }
+.foot__meta span { display: block; }
+
+/* Static export type floor. Exported at 940px and displayed by GitHub in a
+   ~890px column, so everything arrives at 0.947 scale. Most of this figure is
+   already 12px or above there; these three sat at 10–11px, which is not
+   readable. Only the offenders are raised, so the type hierarchy is unchanged.
+   See artefacts/README.md for why the export width is 940 and not 1180. */
+.static .foot__meta { font-size: 12px; }
+.static .signal__types, .static .signal__note { font-size: 12.5px; }
+@media print { .foot__meta { font-size: 12px; } .signal__types, .signal__note { font-size: 12.5px; } }
+
+@media print { .fig { max-width: none; } }
+</style>
+</head>
+<body>
+<div class="fig" id="fig">
+
+  <h1 class="fig__title">Where an agent's data access enters the framework</h1>
+  <p class="fig__sub">A subset of the connected cube, drilled into the foundational capability layer.
+    Core capabilities are claims you cannot make about an event you never collected.</p>
+
+  <section class="cube">
+    <div class="cube__glyph" aria-hidden="true">
+      <svg viewBox="0 0 120 124" role="img">
+        <polygon points="60,4 115,36 60,68 5,36" fill="#4E6EF4" stroke="#fff" stroke-width="2"/>
+        <line x1="27" y1="23" x2="82" y2="55" stroke="#fff" stroke-width="1.6"/>
+        <line x1="38" y1="17" x2="93" y2="49" stroke="#fff" stroke-width="1.6"/>
+        <line x1="49" y1="10" x2="104" y2="42" stroke="#fff" stroke-width="1.6"/>
+        <polygon points="5,36 60,68 60,120 5,88" fill="#90A4F8" stroke="#fff" stroke-width="2"/>
+        <polygon points="115,36 60,68 60,120 115,88" fill="#001240" stroke="#fff" stroke-width="2"/>
+        <line x1="115" y1="52" x2="60" y2="84" stroke="#fff" stroke-width="1.6"/>
+        <line x1="115" y1="68" x2="60" y2="100" stroke="#fff" stroke-width="1.6"/>
+      </svg>
+    </div>
+    <div class="cube__body">
+      <h2 class="cube__h">The connected cube — the established device</h2>
+      <p class="cube__p">Maps the Data &amp; Information Observability framework across operating model
+        elements, capabilities and data types. Its capability face carries the five core capabilities only.</p>
+      <p class="cube__p cube__p--key">This figure drills one level below that face, into the foundational
+        capabilities the cube does not render — which is where this workstream operates.</p>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <!-- row 1: core capabilities, and why they all depend on the chain -->
+    <div>
+      <div class="band band--core">Core Capabilities</div>
+      <div class="core">
+        <div class="core__cell"><div class="cap cap--1">Value</div><div class="arrow arrow--core" aria-hidden="true"></div></div>
+        <div class="core__cell"><div class="cap cap--2">Discover</div><div class="arrow arrow--core" aria-hidden="true"></div></div>
+        <div class="core__cell"><div class="cap cap--3">Track</div><div class="arrow arrow--core" aria-hidden="true"></div></div>
+        <div class="core__cell"><div class="cap cap--4">Comply</div><div class="arrow arrow--core" aria-hidden="true"></div></div>
+        <div class="core__cell"><div class="cap cap--5">Govern</div><div class="arrow arrow--core" aria-hidden="true"></div></div>
+      </div>
+      <div class="core__all">
+        <div class="arrow" aria-hidden="true"></div>
+        <p class="enter-label">every one of these depends on the chain below</p>
+      </div>
+    </div>
+    <div class="note">
+      <p class="note__h">All five rest on the whole chain</p>
+      <p>Each core capability is an assertion about data access. None can be made where the access was
+        never recorded — so each one <strong>depends on every capability below, not on a part of the
+        layer.</strong></p>
+    </div>
+
+    <!-- row 2: the foundational chain, and where it breaks -->
+    <div>
+      <div class="band band--fnd">Foundational Capabilities</div>
+      <div class="fnd">
+        <div class="bar bar--analyse" id="fnd-analyse">Analyse</div>
+        <div class="arrow arrow--chain" aria-hidden="true"></div>
+        <div class="bar bar--store" id="fnd-store">Store</div>
+        <div class="arrow arrow--chain" aria-hidden="true"></div>
+        <div class="bar bar--alert" id="fnd-alert">Alert</div>
+        <div class="arrow arrow--chain" aria-hidden="true"></div>
+        <div class="break">
+          <div class="bar bar--collect" id="fnd-collect">Collect</div>
+          <div class="arrow arrow--chain" aria-hidden="true"></div>
+          <div class="bar bar--connect" id="fnd-connect">Connect</div>
+        </div>
+      </div>
+    </div>
+    <div class="note note--break">
+      <p class="note__h">The chain breaks here</p>
+      <p>No agreed convention carries actor identity or dataset identity for an agent's tool call, so the
+        event cannot be connected and there is nothing to collect.</p>
+      <p><strong>Alert, Store and Analyse are left with nothing to act on.</strong></p>
+    </div>
+
+    <!-- row 3: what enters, and where it comes from -->
+    <div>
+      <div class="arrow arrow--enter" aria-hidden="true"></div>
+      <p class="enter-label">enters the framework here</p>
+      <div class="signals">
+        <div class="signal">
+          <p class="signal__h">OpenTelemetry span</p>
+          <p class="signal__types">traces · metrics · logs</p>
+          <p class="signal__note">Records that the call happened. Silent on what data it touched.</p>
+        </div>
+        <div class="signal">
+          <p class="signal__h">OpenLineage event</p>
+          <p class="signal__types">lineage-event</p>
+          <p class="signal__note">Records what data was touched. Silent on who asked, and why.</p>
+        </div>
+      </div>
+      <div class="arrow arrow--enter" aria-hidden="true"></div>
+      <div class="origin">Agent → MCP tool call → data resource</div>
+    </div>
+    <div class="note note--source">
+      <p>Capability names: Data &amp; Information Observability framework, core and foundational layers.
+        The adjacent layer is out of frame for this figure.</p>
+      <p>Signal types: OpenTelemetry (traces, metrics, logs) and OpenLineage (lineage events).</p>
+      <p>Colours: BearingNode brand guidelines. The foundational-layer teals follow the framework
+        depiction and are not in the guidelines — see artefacts/README.md.</p>
+    </div>
+
+  </div>
+
+  <footer class="foot">
+    <div class="foot__logo" aria-label="BearingNode">__LOGO_SVG__</div>
+    <div class="foot__meta">
+      <span>Data &amp; Information Observability · mcp-lineage</span>
+      <span>© 2026 BearingNode</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// Wix sizes the HTML element's iframe from the outside and cannot read our height
+// across the sandbox boundary, so we report it. postMessage crosses an opaque
+// origin (verified), unlike DOM access.
+(function () {
+  var last = 0;
+  function report() {
+    var h = Math.ceil(document.getElementById('fig').getBoundingClientRect().height);
+    if (h === last) return;
+    last = h;
+    try { parent.postMessage({ type: 'bn-figure-height', height: h }, '*'); } catch (e) {}
+  }
+  addEventListener('load', report);
+  if (window.ResizeObserver) new ResizeObserver(report).observe(document.getElementById('fig'));
+  document.fonts && document.fonts.ready.then(report);
+})();
+</script>
+</body>
+</html>

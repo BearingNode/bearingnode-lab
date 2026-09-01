@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The call chain of one agent tool call — BearingNode</title>
+<style>
+/* Roboto, per the BearingNode brand guidelines. Embedded as a data: URI rather
+   than linked, because the Wix HTML element renders in a sandboxed iframe with
+   no allow-same-origin, where an externally-hosted font cannot be fetched.
+   Verified: a data: URI font resolves inside sandbox="allow-scripts".
+   Single variable file, Latin subset, covers 100-900. */
+@font-face {
+  font-family: 'Roboto';
+  src: url(data:font/woff2;base64,__ROBOTO_B64__) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* BearingNode brand guidelines — the same set both existing figures declare. */
+  --navy: #001240;
+  --azure: #1338BE;
+  --cornflower: #668FF2;
+  --persimmon: #F26422;
+  --offwhite: #F5F5F5;
+  --ink: #132C4B;
+  --rule: #D3DAE3;
+  --muted: #5A6678;
+  --slate: #965EF0;          /* Medium Slate Blue — the OpenTelemetry / span path, for cross-figure consistency */
+  --slate-tint: #B28FF0;
+  --persimmon-wash: #FFF0DF;
+  --persimmon-dark: #9B3F00;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+.mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; overflow-wrap: anywhere; }
+
+.fig {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.2vw, 32px);
+  container-type: inline-size;
+}
+
+/* ---------- heading ---------- */
+.fig__title { margin: 0 0 6px; font-size: clamp(20px, 2.5vw, 32px); font-weight: 700; color: var(--navy); line-height: 1.15; }
+.fig__sub { margin: 0 0 clamp(16px, 2vw, 26px); font-size: clamp(13px, 1.25vw, 17px); color: var(--ink); max-width: 92ch; }
+
+/* ---------- the spine: one stage after another, in the order it happens ---------- */
+.spine { display: flex; flex-direction: column; }
+
+.cc-stage {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: clamp(12px, 1.6vw, 22px);
+  min-width: 0;
+}
+.cc-stage--muted { background: var(--offwhite); border: 2px dashed var(--rule); }
+.cc-stage--centre { border: 2px solid var(--azure); }
+.cc-stage--terminal { background: var(--offwhite); border: 1px solid var(--rule); }
+
+.cc-stage__head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.cc-stage__num {
+  flex: 0 0 auto; width: clamp(22px, 2vw, 28px); height: clamp(22px, 2vw, 28px);
+  border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; font-size: clamp(11px, 1vw, 13px);
+}
+.cc-stage__role { font-weight: 700; color: var(--navy); font-size: clamp(14px, 1.4vw, 18px); }
+.cc-stage__path { font-size: clamp(11px, 0.98vw, 13.5px); color: var(--muted); overflow-wrap: anywhere; }
+.cc-stage__body { font-size: clamp(12.5px, 1.1vw, 15px); }
+.cc-stage__body p { margin: 0 0 8px; }
+.cc-stage__body p:last-child { margin-bottom: 0; }
+.cc-tag {
+  display: inline-block; font-size: clamp(10px, 0.9vw, 12px); font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--rule); border-radius: 5px; padding: 2px 7px; margin-left: 8px;
+}
+
+/* ---------- vertical connector, CSS not SVG: stem + triangle head, scales with layout ---------- */
+.cc-arrow { display: flex; flex-direction: column; align-items: center; align-self: center; margin: clamp(4px, 0.8vw, 10px) 0; }
+/* Stem first (order 1, on top), triangle head last (order 2, at the bottom),
+   pointing DOWN via border-top — this spine flows top to bottom. (The
+   opposite pairing — border-bottom, head first — is framework-entry's
+   upward core-capability arrow; copying it unflipped here would have every
+   connector in this figure point the wrong way.) */
+.cc-arrow::before { content: ""; order: 1; width: 3px; height: clamp(16px, 2.2vw, 30px); background: var(--navy); }
+.cc-arrow::after {
+  content: ""; order: 2; width: 0; height: 0;
+  border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 11px solid var(--navy);
+}
+
+/* ---------- the read-above-the-seam boundary: the strongest single claim this figure can make ---------- */
+.cc-seam { display: flex; align-items: center; gap: 10px; margin: clamp(8px, 1.2vw, 16px) 0; }
+.cc-seam::before, .cc-seam::after { content: ""; flex: 1 1 auto; border-top: 2px dashed var(--cornflower); }
+.cc-seam__label {
+  flex: 0 0 auto; font-size: clamp(10.5px, 0.95vw, 13px); font-weight: 700; color: var(--navy);
+  text-align: center; max-width: 46ch;
+}
+@container (max-width: 560px) {
+  .cc-seam { flex-direction: column; gap: 6px; }
+  .cc-seam::before, .cc-seam::after { width: 100%; flex: 0 0 auto; }
+}
+
+/* ---------- tool chips: the asymmetry the whole "why not a gateway" argument rests on ---------- */
+.cc-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cc-tool {
+  font-size: clamp(11px, 0.95vw, 13px); border-radius: 5px; padding: 4px 8px;
+  border: 1px solid var(--rule);
+}
+.cc-tool--sql { border-color: var(--azure); background: #fff; color: var(--navy); font-weight: 700; }
+.cc-tool--internal { background: var(--offwhite); color: var(--muted); }
+.cc-tool--unnamed { border-style: dashed; border-color: var(--rule); background: #fff; color: var(--muted); }
+.cc-tools__key { margin: 6px 0 0; font-size: clamp(10.5px, 0.9vw, 12px); color: var(--muted); }
+
+/* ---------- the "ask": _meta and the trace-context facet. persimmon is spent nowhere else. ---------- */
+.cc-ask {
+  border: 2px solid var(--persimmon); background: var(--persimmon-wash); border-radius: 6px;
+  padding: clamp(10px, 1.3vw, 16px); margin-top: 10px;
+}
+.cc-ask__h { margin: 0 0 6px; font-size: clamp(12.5px, 1.1vw, 15px); font-weight: 700; color: var(--persimmon-dark); }
+.cc-ask p { margin: 0 0 6px; font-size: clamp(12px, 1.05vw, 14px); }
+.cc-ask p:last-child { margin-bottom: 0; }
+.cc-ask__key { display: block; margin: 6px 0; font-size: clamp(11.5px, 1vw, 13.5px); font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+
+/* three outcomes of reading _meta — ABSENT gets the "gap" treatment, MALFORMED is loud, never conflated (RAID I29) */
+.cc-outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.cc-outcome { border-radius: 6px; padding: 8px 10px; font-size: clamp(11px, 1vw, 13px); }
+.cc-outcome__h { display: block; font-weight: 700; margin-bottom: 3px; }
+.cc-outcome--present { background: #fff; border: 1px solid var(--rule); color: var(--ink); }
+.cc-outcome--present .cc-outcome__h { color: var(--azure); }
+.cc-outcome--absent { background: var(--persimmon-wash); border: 1.6px dashed var(--persimmon); color: var(--persimmon-dark); }
+.cc-outcome--malformed { background: var(--navy); color: #fff; }
+
+/* ---------- a note that deserves visibility without spending persimmon on ordinary structure ---------- */
+.cc-note { border: 1.5px solid var(--azure); background: #fff; border-radius: 6px; padding: clamp(10px, 1.2vw, 14px); margin-top: 10px; }
+.cc-note__h { margin: 0 0 6px; font-size: clamp(12.5px, 1.05vw, 14.5px); font-weight: 700; color: var(--navy); }
+.cc-note p { margin: 0 0 6px; font-size: clamp(11.5px, 1vw, 13.5px); }
+.cc-note p:last-child { margin-bottom: 0; }
+
+.cc-footnote { margin-top: 8px; font-size: clamp(11px, 0.95vw, 13px); color: var(--muted); padding-left: clamp(10px, 1.4vw, 16px); border-left: 2px solid var(--rule); }
+.cc-footnote p { margin: 0 0 4px; }
+.cc-footnote p:last-child { margin: 0; }
+
+/* ---------- stage 5: the choke point, and the ordered list that IS the argument ---------- */
+.cc-steps { list-style: none; margin: 4px 0 0; padding: 0; counter-reset: cc-step; }
+.cc-steps li {
+  counter-increment: cc-step;
+  display: grid; grid-template-columns: clamp(20px, 2vw, 26px) minmax(0, 1fr);
+  gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: clamp(12px, 1.05vw, 14px);
+}
+.cc-steps li:first-child { border-top: 0; padding-top: 2px; }
+.cc-steps li::before {
+  content: counter(cc-step); font-weight: 700; color: var(--azure);
+  font-size: clamp(11px, 1vw, 13px);
+}
+/* Each <li> has exactly two real children: the generated counter and this
+   single wrapping div. A CSS grid blockifies every direct child, so mixed
+   inline content (strong, span.mono, bare text) placed straight in the grid
+   item gets each blockified separately into its own implicit track — which
+   produced clipped, misaligned text at narrow widths. Wrapping the inline
+   content in one flow container keeps it a normal inline flow inside a
+   single grid cell. */
+.cc-steps__body { min-width: 0; }
+.cc-steps strong { color: var(--navy); }
+.cc-steps .mono { font-size: 0.94em; }
+.cc-steps li[data-emits] { scroll-margin: 0; }
+.cc-emit { display: inline-block; margin-left: 6px; font-size: 0.86em; font-weight: 700; border-radius: 5px; padding: 1px 6px; }
+.cc-emit--marquez { background: var(--azure); color: #fff; }
+.cc-emit--postgres { background: var(--navy); color: #fff; }
+
+/* ---------- stage 5a: the failure posture, a small labelled branch off the spine ---------- */
+.cc-branch { margin-top: clamp(10px, 1.3vw, 16px); padding-left: clamp(14px, 1.8vw, 20px); border-left: 3px solid var(--cornflower); }
+.cc-branch__h { margin: 0 0 8px; font-size: clamp(12px, 1.05vw, 14px); font-weight: 700; color: var(--navy); }
+.cc-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.cc-mode { border-radius: 6px; padding: 8px 10px; font-size: clamp(11px, 1vw, 13px); border: 1px solid var(--rule); }
+.cc-mode__h { display: block; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+.cc-mode--open { background: var(--offwhite); }
+.cc-mode--closed { background: #fff; border-color: var(--azure); }
+.cc-branch__note { margin: 0; font-size: clamp(11.5px, 1vw, 13px); color: var(--muted); }
+
+/* ---------- stage 6: the event's shape — a compact annotated card, not a JSON dump ---------- */
+.cc-event { display: grid; gap: 8px; margin-top: 4px; }
+.cc-event__row { display: grid; grid-template-columns: minmax(90px, 130px) minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--rule); font-size: clamp(11.5px, 1vw, 13.5px); }
+.cc-event__row:first-child { border-top: 0; }
+.cc-event__row dt { color: var(--muted); font-weight: 700; }
+.cc-event__row dd { margin: 0; overflow-wrap: anywhere; }
+.cc-tagset { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cc-tagchip { font-size: clamp(10.5px, 0.92vw, 12.5px); border: 1px solid var(--rule); background: var(--offwhite); border-radius: 5px; padding: 3px 7px; }
+
+/* ---------- stage 7: two write paths, two completeness guarantees ---------- */
+.cc-split {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(10px, 1.4vw, 18px);
+  grid-template-areas: "otel" "connector" "ol";
+}
+.cc-path--otel { grid-area: otel; }
+.cc-path--ol { grid-area: ol; }
+/* the connector: sits IN the gutter between the two cards, touching both — not
+   a footnote below them. Dashed stem, a border-triangle head at each end
+   (built the same way .cc-arrow builds its head), bidirectional because the
+   join is correlation, never a pipeline. Vertical by default (cards stacked);
+   rotates to horizontal once the container is wide enough to sit them side by
+   side, so the connector always lies in the real gap, not an absolute guess. */
+.cc-connector { grid-area: connector; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cc-connector__stem { flex: 1 1 auto; width: 0; min-height: 24px; border-left: 2px dashed var(--muted); }
+.cc-connector__head { width: 0; height: 0; flex: 0 0 auto; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 0; border-bottom: 0; }
+.cc-connector__head--start { border-bottom: 9px solid var(--muted); }
+.cc-connector__head--end { border-top: 9px solid var(--muted); }
+@container (min-width: 560px) {
+  .cc-split { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "otel connector ol"; }
+  .cc-connector { flex-direction: row; }
+  .cc-connector__stem { width: auto; min-width: 24px; min-height: 0; height: 0; border-left: 0; border-top: 2px dashed var(--muted); }
+  .cc-connector__head { border-left: 0; border-right: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+  .cc-connector__head--start { border-bottom: 6px solid transparent; border-right: 9px solid var(--muted); }
+  .cc-connector__head--end { border-top: 6px solid transparent; border-left: 9px solid var(--muted); }
+}
+.cc-path { border-radius: 8px; padding: clamp(10px, 1.4vw, 18px); border: 2px solid var(--rule); background: #fff; min-width: 0; }
+.cc-path--otel { border-color: var(--slate); }
+.cc-path--ol { border-color: var(--azure); }
+.cc-path__brand { margin: 0 0 6px; }
+.cc-path__brand svg { display: block; width: clamp(96px, 12vw, 132px); height: auto; max-width: 100%; }
+.cc-path__h { margin: 0 0 4px; font-size: clamp(13px, 1.15vw, 16px); font-weight: 700; color: var(--navy); }
+.cc-path p { margin: 0 0 6px; font-size: clamp(11.5px, 1.02vw, 14px); }
+.cc-path p:last-child { margin-bottom: 0; }
+.cc-path__stat { font-weight: 700; }
+.cc-path--otel .cc-path__stat { color: var(--slate); }
+.cc-path--ol .cc-path__stat { color: var(--azure); }
+
+/* dashed, bidirectional, explicitly labelled — correlation, never a pipeline */
+.cc-join { display: flex; align-items: center; gap: 10px; margin-top: clamp(10px, 1.4vw, 16px); padding: clamp(8px, 1vw, 12px) clamp(10px, 1.4vw, 16px); border: 2px dashed var(--rule); border-radius: 8px; background: var(--offwhite); }
+.cc-join__glyph { flex: 0 0 auto; font-size: clamp(16px, 1.6vw, 22px); color: var(--navy); font-weight: 700; }
+.cc-join__body { min-width: 0; font-size: clamp(11.5px, 1vw, 13.5px); }
+.cc-join__body strong { color: var(--navy); }
+.cc-join__body p { margin: 3px 0 0; color: var(--muted); }
+
+/* ---------- provenance / date ---------- */
+.prov { margin: clamp(18px, 2.2vw, 26px) 0 0; font-size: clamp(10px, 0.92vw, 12.5px); color: var(--muted); }
+.prov .mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; overflow-wrap: anywhere; }
+
+/* ---------- footer, identical to both existing figures ---------- */
+.foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: clamp(10px, 1.5vw, 20px);
+  margin-top: clamp(22px, 2.6vw, 34px); padding-top: clamp(14px, 1.8vw, 22px);
+  border-top: 1px solid var(--rule);
+}
+.foot__logo { flex: 0 0 auto; width: clamp(150px, 17vw, 210px); }
+.foot__logo svg { display: block; width: 100%; height: auto; }
+.foot__meta { text-align: right; font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); }
+.foot__meta span { display: block; }
+
+/* ---------- static export: fixed px, never clamp()/vw. re-verified after every change. ---------- */
+/* Same reasoning as both existing figures: GitHub fits a README image to a
+   ~890px column. Every size above is clamp(min, Nvw/cqw, max), correct for a
+   page the reader sizes themselves but wrong for a still rendered once at
+   940px and scaled down by whatever displays it — exporting narrower makes it
+   worse, not better, because the vw/cqw terms shrink with the viewport too.
+   This is a design-width problem; vector would not fix it either. */
+.static .fig__title { font-size: 29px; }
+.static .fig__sub { font-size: 15.5px; }
+.static .cc-stage__role { font-size: 17px; }
+.static .cc-stage__path { font-size: 13px; }
+.static .cc-stage__body { font-size: 14.5px; }
+.static .cc-stage__num { width: 27px; height: 27px; font-size: 13px; }
+.static .cc-tag { font-size: 13px; }
+.static .cc-seam__label { font-size: 13px; }
+.static .cc-tool { font-size: 13px; }
+.static .cc-tools__key { font-size: 12px; }
+.static .cc-ask__h { font-size: 14.5px; }
+.static .cc-ask p { font-size: 13.5px; }
+.static .cc-ask__key { font-size: 13px; }
+.static .cc-outcome { font-size: 13px; }
+.static .cc-note__h { font-size: 14px; }
+.static .cc-note p { font-size: 13px; }
+.static .cc-footnote { font-size: 13px; }
+.static .cc-steps li { font-size: 13.5px; }
+.static .cc-branch__h { font-size: 13.5px; }
+.static .cc-branch__note { font-size: 13px; }
+.static .cc-mode { font-size: 13px; }
+.static .cc-event__row { font-size: 13px; }
+.static .cc-tagchip { font-size: 13px; }
+.static .cc-path__h { font-size: 15.5px; }
+.static .cc-path p { font-size: 13.5px; }
+.static .cc-join__body { font-size: 13px; }
+.static .prov { font-size: 12px; }
+.static .foot__meta { font-size: 12px; }
+@media print {
+  .fig__title { font-size: 29px; } .fig__sub { font-size: 15.5px; }
+  .cc-stage__role { font-size: 17px; } .cc-stage__path { font-size: 13px; } .cc-stage__body { font-size: 14.5px; }
+  .cc-tag { font-size: 13px; } .cc-seam__label { font-size: 13px; } .cc-tool { font-size: 13px; }
+  .cc-tools__key { font-size: 12px; }
+  .cc-ask__h { font-size: 14.5px; } .cc-ask p { font-size: 13.5px; } .cc-ask__key { font-size: 13px; }
+  .cc-outcome { font-size: 13px; } .cc-note__h { font-size: 14px; } .cc-note p { font-size: 13px; }
+  .cc-footnote { font-size: 13px; } .cc-steps li { font-size: 13.5px; } .cc-branch__h { font-size: 13.5px; }
+  .cc-branch__note { font-size: 13px; }
+  .cc-mode { font-size: 13px; } .cc-event__row { font-size: 13px; } .cc-tagchip { font-size: 13px; }
+  .cc-path__h { font-size: 15.5px; } .cc-path p { font-size: 13.5px; } .cc-join__body { font-size: 13px; }
+  .prov { font-size: 12px; } .foot__meta { font-size: 12px; } .fig { max-width: none; }
+}
+</style>
+</head>
+<body>
+<div class="fig" id="fig">
+
+  <h1 class="fig__title">The call chain of one agent tool call</h1>
+  <p class="fig__sub">From <span class="mono">tools/call</span> to two divergent trails. Every name below is
+    read from the code cited beneath it — grep the repository for any of them.</p>
+
+  <div class="spine">
+
+    <!-- Stage 1 — the LLM plane, assumed present, not instrumented here -->
+    <section class="cc-stage cc-stage--muted">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">1</span>
+        <span class="cc-stage__role">Agent / LLM (caller)</span>
+        <span class="cc-tag">out of scope — RAID A09</span>
+      </div>
+      <p class="cc-stage__path">Test client — <span class="mono">driver/driver.py</span>, or a live agent (OpenWebUI, planned)</p>
+      <div class="cc-stage__body">
+        <p>The caller is either a live agent or the deterministic test client. It is the
+          <strong>only</strong> source of actor and lineage-parent identity (RAID D01, D10 clause 2b) — the
+          server cannot invent or derive who is asking.</p>
+        <p>The agent's own GenAI spans exist and belong to the <strong>same trace</strong> as everything
+          below, but nothing in this repository emits them. That is a stated scope boundary, not an
+          omission.</p>
+      </div>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 2 — the tools/call, and the _meta ask -->
+    <section class="cc-stage">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">2</span>
+        <span class="cc-stage__role">MCP <span class="mono">tools/call</span>, over Streamable HTTP</span>
+      </div>
+      <p class="cc-stage__path"><span class="mono">driver/driver.py</span> lines 22–45 · <span class="mono">mcp_server_ol/.../main.py</span> <span class="mono">install_streamable_http()</span></p>
+      <div class="cc-stage__body">
+        <p><span class="mono">await session.call_tool("execute_sql", {"sql": sql})</span></p>
+      </div>
+      <div class="cc-footnote">
+        <p>Transport: <span class="mono">streamablehttp_client</span> → <span class="mono">http://localhost:8000/mcp</span>.
+          Upstream <span class="mono">postgres-mcp</span> offers only <span class="mono">stdio</span>/<span class="mono">sse</span>;
+          Streamable HTTP is obtained by replacing the bound method <span class="mono">mcp.run_sse_async</span> (RAID D13).</p>
+      </div>
+
+      <div class="cc-ask">
+        <p class="cc-ask__h">The ask, part one — bespoke on purpose</p>
+        <p><span class="mono">_meta</span> rides on this message and carries caller identity:</p>
+        <span class="cc-ask__key mono">io.bearingnode.lineage/parent</span>
+        <p>Reverse-DNS prefixed (<span class="mono">meta.py:43</span>), carrying <span class="mono">parentRunId</span>,
+          <span class="mono">jobNamespace</span>, <span class="mono">jobName</span>, and optionally
+          <span class="mono">rootRunId</span>, <span class="mono">rootJobNamespace</span>, <span class="mono">rootJobName</span>.
+          MCP declares <span class="mono">_meta</span> <span class="mono">extra: allow</span>, so this key travels today
+          against an unmodified SDK — what is missing is agreement on the name.</p>
+        <div class="cc-outcomes">
+          <div class="cc-outcome cc-outcome--present"><span class="cc-outcome__h">PRESENT — supplied</span>Caller sent identity; it is used.</div>
+          <div class="cc-outcome cc-outcome--absent"><span class="cc-outcome__h">ABSENT — the gap</span>The normal, quiet, pre-convention state of every MCP client on earth.</div>
+          <div class="cc-outcome cc-outcome--malformed"><span class="cc-outcome__h">MALFORMED — reported loudly</span>Somebody's broken integration, never folded into ABSENT (<span class="mono">meta.py:46–58</span>).</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cc-seam" aria-hidden="false">
+      <span class="cc-seam__label">↑ a gateway or proxy can only see this far — it captures <span class="mono">tools/call</span> and nothing below it</span>
+    </div>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 3 — postgres-mcp, unmodified and pinned -->
+    <section class="cc-stage">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">3</span>
+        <span class="cc-stage__role"><span class="mono">postgres-mcp</span> server</span>
+        <span class="cc-tag">unmodified, pinned</span>
+      </div>
+      <p class="cc-stage__path">README.md § Why not higher up · main.py docstring</p>
+      <div class="cc-stage__body">
+        <p><strong>Nine tools. Only three take SQL as an argument.</strong> Anything reading
+          <span class="mono">tools/call</span> from outside captures the generic run-this-SQL tool and misses every
+          purpose-built one — <em>"the worse failure, because it fails silently on exactly the tools an
+          enterprise writes"</em>. A component parsing somebody else's traffic infers, and inference is not
+          evidence (RAID D02).</p>
+      </div>
+      <div class="cc-tools">
+        <span class="cc-tool cc-tool--sql mono">execute_sql</span>
+        <span class="cc-tool cc-tool--internal mono">list_schemas</span>
+        <span class="cc-tool cc-tool--internal mono">list_objects</span>
+        <span class="cc-tool cc-tool--internal mono">get_object_details</span>
+        <span class="cc-tool cc-tool--internal mono">analyze_db_health</span>
+        <span class="cc-tool cc-tool--internal mono">get_top_queries</span>
+        <span class="cc-tool cc-tool--unnamed">+3 more, not named in this repository</span>
+      </div>
+      <p class="cc-tools__key">Outlined = SQL arrives as an argument. Grey = SQL is built internally; the protocol never sees it. Dashed = not named in this repository; two of the three SQL-taking tools are among them.</p>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 4 — the factory swap -->
+    <section class="cc-stage">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">4</span>
+        <span class="cc-stage__role">The factory swap</span>
+      </div>
+      <p class="cc-stage__path"><span class="mono">mcp_server_ol/src/mcp_server_ol/main.py</span> <span class="mono">install()</span>, lines 82–124</p>
+      <div class="cc-stage__body">
+        <p><span class="mono">postgres_mcp.server.get_sql_driver</span> is a <strong>module-level factory</strong>, so
+          <span class="mono">install()</span> replaces it with one returning a <span class="mono">LineageSqlDriver</span>.
+          Upstream is <strong>not forked, not vendored, not modified</strong>; it stays pinned (RAID D03).
+          <em>"Adding OpenLineage to a real, widely-adopted MCP server is a subclass and a factory swap."</em></p>
+      </div>
+      <div class="cc-footnote">
+        <p>In RESTRICTED mode upstream wraps the driver in a <span class="mono">SafeSqlDriver</span>, so
+          <span class="mono">install()</span> reaches through <span class="mono">getattr(driver, "sql_driver", driver)</span>
+          and instruments whichever object actually reaches the database.</p>
+      </div>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 5 — the centre of gravity -->
+    <section class="cc-stage cc-stage--centre" id="cc-driver">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">5</span>
+        <span class="cc-stage__role">Instrumentation — <span class="mono">LineageSqlDriver</span></span>
+        <span class="cc-tag">we instrument here</span>
+      </div>
+      <p class="cc-stage__path">subclass of <span class="mono">postgres_mcp.sql.SqlDriver</span> · <span class="mono">mcp_server_ol/src/mcp_server_ol/driver.py</span> lines 115–222</p>
+      <div class="cc-stage__body">
+        <p>This is the choke point: <strong>all nine tools funnel through <span class="mono">execute_query</span></strong>,
+          which is why one subclass covered the whole server. (Not to be confused with
+          <span class="mono">driver/driver.py</span>, the unrelated test client in stage 1 — README.md notes the
+          naming collision explicitly.)</p>
+      </div>
+      <ol class="cc-steps">
+        <li><div class="cc-steps__body"><strong>Open the OTel span.</strong> <span class="mono">telemetry.tracer().start_as_current_span(self._job_name)</span>,
+          default job name <span class="mono">mcp.execute_sql</span>, service resource <span class="mono">mcp-server-ol</span> (<span class="mono">telemetry.py:48</span>).</div></li>
+        <li><div class="cc-steps__body"><strong>Parse.</strong> <span class="mono">parse_statement(sql)</span> → <span class="mono">openlineage_sql.parse([sql], dialect="postgres")</span>.
+          A parse failure is <strong>not fatal</strong> — the statement still runs and lineage is emitted with no
+          datasets, tagged <span class="mono">parse-failed</span>, counted via <span class="mono">telemetry.record_degraded(...)</span>.
+          It must not read as "this touched nothing" (RAID I29).</div></li>
+        <li><div class="cc-steps__body"><strong>Resolve caller identity.</strong> <span class="mono">self._parent()</span> → <span class="mono">main._current_parent()</span>
+          → <span class="mono">meta.parent_from_meta(...)</span>. A provider that <em>raises</em> is our own instrumentation
+          failing, counted as <span class="mono">Dropped.NO_REQUEST_CONTEXT</span> — never folded into the normal absent case.</div></li>
+        <li><div class="cc-steps__body"><strong>Mint the run id.</strong> <span class="mono">emitter.new_run_id()</span> → <span class="mono">uuid4</span>.
+          Span attributes <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span> go on
+          immediately — correlation, not identity (RAID R09).</div></li>
+        <li data-emits="marquez-start"><div class="cc-steps__body"><strong>Emit START — before execution.</strong><span class="cc-emit cc-emit--marquez">→ Marquez</span>
+          A process killed mid-statement still leaves a record that the database was reached. This ordering is what
+          makes fail-closed coherent rather than theatrical.</div></li>
+        <li data-emits="postgres-execute"><div class="cc-steps__body"><strong>Execute.</strong><span class="cc-emit cc-emit--postgres">→ Postgres</span>
+          <span class="mono">await super().execute_query(...)</span> → <span class="mono">psycopg</span> / <span class="mono">psycopg_pool</span>
+          → <span class="mono">warehouse.obsinsure.*</span>.</div></li>
+        <li><div class="cc-steps__body"><strong>Emit the terminal event.</strong> <span class="mono">COMPLETE</span> on success; on exception
+          <span class="mono">FAIL</span> with an <span class="mono">errorMessage</span> facet, <strong>then re-raise</strong>.
+          The FAIL path is forced fail-open in both postures (<span class="mono">force_open=True</span>) — an emission
+          failure must never mask the real database error.</div></li>
+      </ol>
+
+      <div class="cc-branch">
+        <p class="cc-branch__h">5a — the failure posture, off <span class="mono">_safe_emit</span></p>
+        <div class="cc-modes">
+          <div class="cc-mode cc-mode--open"><span class="cc-mode__h">OPEN — default, RAID D11</span>A lineage failure is recorded and swallowed. An observability side-channel that can break the thing it observes gets removed by the first person it pages.</div>
+          <div class="cc-mode cc-mode--closed"><span class="cc-mode__h">CLOSED — RAID R08, <span class="mono">LINEAGE_FAILURE_MODE=closed</span></span>The statement is <strong>refused</strong> rather than left unrecorded, raising <span class="mono">LineageEmissionError</span> — distinct from any database error, because the statement was fine and the control failed.</div>
+        </div>
+        <p class="cc-branch__note">The drop counter is recorded in <strong>both</strong> modes, before the mode is consulted — the one path where OpenLineage cannot report on itself. Neither mode is presented as correct; both are demonstrated.</p>
+      </div>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 6 — what the event carries -->
+    <section class="cc-stage">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">6</span>
+        <span class="cc-stage__role">What the OpenLineage event carries</span>
+      </div>
+      <p class="cc-stage__path">mcp_server_ol/src/mcp_server_ol/lineage.py</p>
+      <dl class="cc-event">
+        <div class="cc-event__row"><dt>RunEvent</dt><dd><span class="mono">eventType = START | COMPLETE | FAIL</span>, built with <span class="mono">openlineage-python</span> — never hand-rolled JSON.</dd></div>
+        <div class="cc-event__row"><dt>Job</dt><dd>namespace <span class="mono">mcp-lineage-demo</span> (<span class="mono">OL_JOB_NAMESPACE</span>), name <span class="mono">mcp.execute_sql</span>, with an <span class="mono">SQLJobFacet</span> carrying the query text.</dd></div>
+        <div class="cc-event__row"><dt>Datasets</dt><dd>namespace <span class="mono">postgres://{host}:{port}</span>, name <span class="mono">{database}.{schema}.{table}</span> — e.g. <span class="mono">postgres://postgres:5432</span> / <span class="mono">warehouse.obsinsure.claim</span>. Per the OpenLineage naming specification (<span class="mono">naming.py</span>): a <em>canonical catalog identity</em>, not a transport pointer (RAID A05) — the earlier scaffold got this wrong (I16).</dd></div>
+        <div class="cc-event__row"><dt>ParentRunFacet</dt><dd>present only when the caller supplied identity. <strong>Linkage only</strong> (RAID D10): the caller's identity facets are deliberately not forwarded nested inside it, because the pinned Marquez silently discards them (R07, I22).</dd></div>
+      </dl>
+
+      <div class="cc-note">
+        <p class="cc-note__h"><span class="mono">TagsRunFacet</span> — three tags, all standard facets</p>
+        <p>A04 was wrong precisely because it proposed something new without checking what already existed.</p>
+        <div class="cc-tagset">
+          <span class="cc-tagchip mono">lineage.derivation = parsed-intent</span>
+          <span class="cc-tagchip mono">lineage.completeness = not-guaranteed | parse-failed</span>
+          <span class="cc-tagchip mono">lineage.actor = supplied | absent | malformed</span>
+        </div>
+        <p style="margin-top:6px;"><strong>Datasets are parsed intent, not observed effect (RAID D08).</strong> Views, triggers, cascades, partition routing and RLS are invisible to a parser (R03). Emitting intent unlabelled would make this demo an instance of the problem it describes.</p>
+      </div>
+
+      <div class="cc-ask">
+        <p class="cc-ask__h">The ask, part two — bespoke on purpose</p>
+        <span class="cc-ask__key mono">bearingnode_traceContext</span>
+        <p>Run facet carrying <span class="mono">traceId</span> and <span class="mono">spanId</span>.</p>
+        <p>No facet in the OpenLineage spec carries trace context (verified at <span class="mono">1.52.0-9-g2aae49d8b</span>).
+          Styled exactly like the <span class="mono">_meta</span> key in stage 2 — there are exactly two bespoke names in
+          this system, and this pairing is the point.</p>
+      </div>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 7 — two write paths -->
+    <section class="cc-stage">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">7</span>
+        <span class="cc-stage__role">Two write paths, two completeness guarantees</span>
+      </div>
+      <p class="cc-stage__path">README.md §§ Architecture, Why two stores, one Postgres, Run it</p>
+      <div class="cc-split">
+        <div class="cc-path cc-path--otel">
+          <p class="cc-path__brand">__OTEL_LOGO__</p>
+          <p class="cc-path__h">Spans → OTel Collector → Jaeger</p>
+          <p><span class="cc-path__stat">Tail-sampled at 10%, probabilistically.</span> Two verification runs on
+            2026-07-27 retained <strong>10 and 14</strong> traces.</p>
+          <p class="mono">:16686</p>
+        </div>
+        <div class="cc-connector" aria-hidden="true">
+          <span class="cc-connector__head cc-connector__head--start"></span>
+          <span class="cc-connector__stem"></span>
+          <span class="cc-connector__head cc-connector__head--end"></span>
+        </div>
+        <div class="cc-path cc-path--ol">
+          <p class="cc-path__brand">__OL_LOGO__</p>
+          <p class="cc-path__h">Lineage events → Marquez</p>
+          <p><span class="cc-path__stat">Every event, nothing samples.</span> Same interactions, same collector,
+            one trail intact and one full of holes — because the collector did exactly what its designers intended.</p>
+          <p class="mono">:3000</p>
+        </div>
+      </div>
+      <div class="cc-join">
+        <span class="cc-join__glyph" aria-hidden="true">⟷</span>
+        <div class="cc-join__body">
+          <strong class="mono">trace_id / span_id</strong> — the only join between the two.
+          <p><strong>Correlation, never derivation.</strong> Nothing in this repository ever generates an
+            OpenLineage event from a span.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cc-arrow" aria-hidden="true"></div>
+
+    <!-- Stage 8 — the result returns -->
+    <section class="cc-stage cc-stage--terminal">
+      <div class="cc-stage__head">
+        <span class="cc-stage__num">8</span>
+        <span class="cc-stage__role">The result returns, and leaves observation</span>
+      </div>
+      <div class="cc-stage__body">
+        <p>The rows go back to the agent. What the agent does with them next — the transform performed after the
+          rows left the server — is outside both standards. That is the fourth region of
+          <strong>"What each signal carries — and what neither does"</strong> (the companion figure,
+          <span class="mono">bearingnode-mcp-lineage-signal-scope</span>), not redrawn here.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="prov">
+    Verified 2026-08-06 against the code cited on each stage above:
+    <span class="mono">mcp-lineage/driver/driver.py</span>,
+    <span class="mono">mcp_server_ol/src/mcp_server_ol/{driver,main,meta,lineage,naming,telemetry}.py</span>
+    and <span class="mono">README.md</span>. MCP's <span class="mono">_meta</span> mechanism and the GenAI/MCP semantic
+    conventions it interacts with carry <strong>development</strong> stability and may still change.<br>
+    OpenTelemetry and OpenLineage marks are trademarks of the CNCF and the LF AI &amp; Data Foundation
+    respectively, reproduced unmodified to identify each project.
+  </p>
+
+  <footer class="foot">
+    <div class="foot__logo" aria-label="BearingNode">__LOGO_SVG__</div>
+    <div class="foot__meta">
+      <span>Data &amp; Information Observability · mcp-lineage</span>
+      <span>© 2026 BearingNode</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// Wix sizes the HTML element's iframe from the outside and cannot read our height
+// across the sandbox boundary, so we report it. postMessage crosses an opaque
+// origin (verified), unlike DOM access.
+(function () {
+  var last = 0;
+  function reportHeight() {
+    var h = Math.ceil(document.getElementById('fig').getBoundingClientRect().height);
+    if (h === last) return;
+    last = h;
+    try { parent.postMessage({ type: 'bn-figure-height', height: h }, '*'); } catch (e) {}
+  }
+  addEventListener('load', reportHeight);
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.getElementById('fig'));
+  if (document.fonts) document.fonts.ready.then(reportHeight);
+})();
+</script>
+</body>
+</html>

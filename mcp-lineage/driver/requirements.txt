@@ -1,0 +1,6 @@
+mcp==1.9.0
+# Client-side tracer for `--mixed` mode (Scenario 2b, test-strategy.md).
+# Pinned to match mcp_server_ol/pyproject.toml's opentelemetry-* versions so
+# both ends of a mixed trace are built against the same SDK generation.
+opentelemetry-sdk==1.44.0
+opentelemetry-exporter-otlp-proto-grpc==1.44.0
