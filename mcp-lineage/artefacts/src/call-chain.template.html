@@ -528,8 +528,10 @@ body {
         <div class="cc-path cc-path--otel">
           <p class="cc-path__brand">__OTEL_LOGO__</p>
           <p class="cc-path__h">Spans → OTel Collector → Jaeger</p>
-          <p><span class="cc-path__stat">Tail-sampled at 10%, probabilistically.</span> Two verification runs on
-            2026-07-27 retained <strong>10 and 14</strong> traces.</p>
+          <p><span class="cc-path__stat">Retention is a policy choice.</span> The sampling rate is configurable
+            (10% here). A trace that produced a lineage event is part of the control record: it holds the
+            decisioning context the event alone can't. The Collector keeps it in full at any rate, so the event's
+            trace reference always resolves. Only traces with no governed span are sampled.</p>
           <p class="mono">:16686</p>
         </div>
         <div class="cc-connector" aria-hidden="true">
@@ -540,8 +542,8 @@ body {
         <div class="cc-path cc-path--ol">
           <p class="cc-path__brand">__OL_LOGO__</p>
           <p class="cc-path__h">Lineage events → Marquez</p>
-          <p><span class="cc-path__stat">Every event, nothing samples.</span> Same interactions, same collector,
-            one trail intact and one full of holes — because the collector did exactly what its designers intended.</p>
+          <p><span class="cc-path__stat">Every event, nothing samples.</span> Same interactions, but a different
+            completeness guarantee by default: the trace side matches it only where a keep policy is configured.</p>
           <p class="mono">:3000</p>
         </div>
       </div>

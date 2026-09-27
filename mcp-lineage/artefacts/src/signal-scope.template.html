@@ -89,6 +89,7 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
    unscoped rule painted a solid azure block behind the selected item. */
 .controls button[aria-pressed="true"], .controls button.on { background: var(--azure); border-color: var(--azure); color: #fff; font-weight: 700; }
 .ctl-group { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.ctl-note { margin: 0 0 14px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 @media (max-width: 720px) { .ctl-group { margin-left: 0; } }
 
 /* ---------- layout ---------- */
@@ -314,8 +315,12 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
     <button type="button" data-step="2">2 · read premium</button>
     <button type="button" data-step="3">3 · agent computes AVG</button>
     <button type="button" data-step="0">Reset</button>
-    <span class="ctl-group"><span class="ctl-label">Collector</span><button type="button" id="sample" aria-pressed="false">Apply 10% tail sampling</button></span>
+    <span class="ctl-group"><span class="ctl-label">Collector</span><button type="button" id="sample" aria-pressed="false">Apply 10% tail sampling (no keep policy)</button></span>
   </div>
+  <p class="ctl-note live-only">The toggle shows what a probabilistic sampler removes at a 10% rate (the rate is
+    configurable) with no keep policy. The reference implementation's Collector adds one: any trace carrying
+    <span class="mono">lineage.run_id</span> is kept in full at any rate, because a trace that produced a
+    lineage event is part of the control record (README § Run it).</p>
 
   <div class="layout">
     <div class="frame">
@@ -328,7 +333,7 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
             <p class="region__brand">__OTEL_LOGO__</p>
             <p class="region__sub">the MCP / GenAI span</p>
             <ul class="items" id="col-otel"></ul>
-            <p class="region__foot">Sampled. Lossy by design.</p>
+            <p class="region__foot">Sampled unless a policy keeps it.</p>
           </div>
           <div class="region region--both">
             <p class="region__h">Both</p>

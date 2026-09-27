@@ -1,7 +1,10 @@
-# Deliberately lossy, by design — this is the point being demonstrated.
-# Software observability tooling samples because it can afford to; this
-# config keeps only ~10% of traces to make that visible against Marquez,
-# which receives every OpenLineage event with no equivalent knob.
+# Sampling is a configured policy here, not a given. Software observability
+# tooling samples because it can afford to, so ordinary traffic falls through
+# to a 10% probabilistic policy. Traces that touch governed data do not: the
+# two keep-policies below run first and retain them in full, so a trace
+# reference on a lineage event always resolves. Delete them and this is plain
+# ~10% sampling again (the rate is a parameter, not a property), against Marquez, which receives every OpenLineage event
+# with no equivalent knob. The contrast is a choice of policy, not of tracing.
 receivers:
   otlp:
     protocols:

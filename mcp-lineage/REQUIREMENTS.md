@@ -550,8 +550,8 @@ sit under the tracing backend's default sampling or retention schedule. It forms
 part of the control record and needs retention to match.
 
 > **Evidence.** [`evidence-matrix.md`](evidence-matrix.md)
-> tests, scores and reproduces each requirement: four met, five partially met,
-> one not met, with the unmet half named in every case and a command to
+> tests, scores and reproduces each requirement: four met, six partially met,
+> none unmet, with the unmet half named in every case and a command to
 > reproduce each row. Read it before relying on any requirement above.
 
 ## 8. What this implies technically

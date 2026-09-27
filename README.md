@@ -108,6 +108,7 @@ They will be published in due course.
 | Edition | Cut from (branch) | Commit | Date |
 |---|---|---|---|
 | `2026.08` | `main` | `49fd3ec7c4b327f38b2feec7deaaae49f1d2c5d8` | `2026-08-10` |
+| `2026.09` | `main` | `c3d42a2059e6798540998128fa768bc3cc1ff608` | `2026-09-27` |
 
 An edition is a snapshot cut from BearingNode's private lab, recorded here with
 the branch, the full commit and the date it was taken from. Those references are

@@ -112,5 +112,8 @@ export const STEP_ITEMS = {
     3: []
   };
 
-/** Items a 10% tail sampler discards. The OpenLineage side has no equivalent knob. */
+/** Items a 10% tail sampler (rate configurable, no keep policy) discards. The reference implementation's
+ *  Collector keeps governed traces in full at any rate, because a trace that produced a lineage
+ *  event is part of the control record, so this is what sampling removes without that policy.
+ *  The OpenLineage side has no equivalent knob. */
 export const SAMPLED_AWAY = ["method", "session", "protocol", "rpc", "args", "duration", "join", "time", "who"];
