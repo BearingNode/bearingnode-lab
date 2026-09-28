@@ -1,6 +1,6 @@
 # mcp-lineage
-
 <!-- build: dc06a539fd7e89b2 -->
+
 
 > **All data is synthetic. This must never touch a production system.**
 > See *Data and deployment*, below, and the
@@ -354,30 +354,37 @@ python driver.py 20 --mixed
 
 Then compare:
 
-- **Jaeger**, http://localhost:16686. Expect **all 111 traces retained**, not
-  a 10% sample. `otel-collector-config.yaml`'s `always-keep-data-access`
-  policy runs first and keeps an entire trace the moment any span in it
-  carries `lineage.run_id`; the probabilistic 10% policy only ever gets a
-  turn on traces that policy skips. Every call this driver fires is a
-  governed `execute_sql` call, so every trace already qualifies before
-  sampling is reached. See *Two traffic modes, and what each proves* below.
-- **Marquez**, http://localhost:3033. Expect all 111 runs, every one
-  `COMPLETED`, under a single stable job name (`mcp.execute_sql`). (111, not
-  100: `driver.py` fires one `CREATE TABLE` call up front, plus one `INSERT`
-  on every tenth iteration, on top of the 100 `SELECT` queries.) **This is
-  the opposite of the frozen `mcp_server/` exhibit's behaviour** — that
-  server's job identity is intentionally synthetic-per-invocation, degrading
-  the Marquez job list into one-run-per-job noise, documented in its own
-  docstring (`mcp_server/server.py`) as a finding about a from-scratch
-  server with no durable job concept. `mcp_server_ol` wraps `postgres-mcp`,
-  which does not have that problem — one job name, many runs against it, the
+- **Jaeger**, http://localhost:16686. Expect **every trace retained**, whatever
+  the driver produced — not a 10% sample, and not a fixed count.
+  `otel-collector-config.yaml`'s `always-keep-data-access` policy runs first
+  and keeps an entire trace the moment any span in it carries
+  `lineage.run_id`; the probabilistic 10% policy only ever gets a turn on
+  traces that policy skips. Every call this driver fires is a governed
+  `execute_sql` call, so every trace already qualifies before sampling is
+  reached. See *Two traffic modes, and what each proves* below.
+- **Marquez**, http://localhost:3033. Expect a run for every call the driver
+  made, every one `COMPLETED`, under a single stable job name
+  (`mcp.execute_sql`) — and the same count Jaeger shows, because that parity
+  is the point. (More than N: `driver.py` fires one `CREATE TABLE` call up
+  front, plus one `INSERT` on every tenth iteration, on top of the N `SELECT`
+  queries — for the `driver.py 100` example above, that's 111.) **This is the
+  opposite of the frozen `mcp_server/` exhibit's behaviour** — that server's
+  job identity is intentionally synthetic-per-invocation, degrading the
+  Marquez job list into one-run-per-job noise, documented in its own
+  docstring (`mcp_server/server.py`) as a finding about a from-scratch server
+  with no durable job concept. `mcp_server_ol` wraps `postgres-mcp`, which
+  does not have that problem — one job name, many runs against it, the
   ordinary shape Marquez expects. Both behaviours are real; they describe
   different servers, not the same one at different times.
 
-Verified end to end on 2026-08-23: 111 of 111 runs in Marquez, 111 of 111
-traces retained in Jaeger, against the live stack, not asserted from an
-earlier run. (Also verified 2026-08-06, on an earlier build of the same
-stack.)
+Verified end to end on 2026-09-27: flat mode at N=37 produced 42 traces in
+Jaeger and 42 runs in Marquez, all `COMPLETED` — exact parity, at a volume
+that isn't 100 or 111, because the claim is about retention holding at any
+volume, not about a specific count. The same run's mixed mode (N=9) confirmed
+the trace-scoped mechanism directly: exactly one span per trace carries
+`lineage.run_id`, and all six spans in all nine traces were retained anyway.
+Also verified 2026-08-23 (111 of 111, at N=100) and 2026-08-06, on earlier
+builds of the same stack.
 
 #### Two traffic modes, and what each proves
 

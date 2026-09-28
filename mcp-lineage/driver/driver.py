@@ -13,11 +13,15 @@ apart):
   one OpenLineage RunEvent pair (START/COMPLETE).
 
   After running, compare:
-    - Jaeger  (http://localhost:16686) — expect roughly 10% of N traces.
-      The collector tail-samples at 10%; the rest were dropped by design.
+    - Jaeger  (http://localhost:16686) — expect every trace retained, at any
+      volume; the count is whatever the run produced. Every span carries
+      `lineage.run_id`, so `always-keep-data-access` keeps it before the
+      collector's 10% probabilistic policy is reached.
     - Marquez (http://localhost:3033)  — expect all N runs. Nothing here
-      samples. This is the argument: same interactions, same collector,
-      one trail intact, one full of holes.
+      samples. Flat mode therefore shows parity, and parity is a configured
+      keep-policy, not a property of tracing: remove that policy from
+      otel-collector-config.yaml and Jaeger drops to roughly 10%. `--mixed`
+      is the mode that shows the policy discriminating.
 
 - **`--mixed` mode (Scenario 2b, composition).** Flat mode alone can't show
   what the `always-keep-data-access` policy does to a trace that *isn't*
@@ -205,8 +209,8 @@ async def run(n: int) -> None:
                 print(f"[{i + 1}/{n}] execute_sql(table={table})")
 
     print(f"\nDone: {n} query calls fired.")
-    print("Compare http://localhost:16686 (Jaeger, ~10% expected) against")
-    print("        http://localhost:3033  (Marquez, 100% expected).")
+    print("Compare http://localhost:16686 (Jaeger, every trace retained) against")
+    print("        http://localhost:3033  (Marquez, every run) — same count both places.")
 
 
 async def run_mixed(n: int) -> None:
