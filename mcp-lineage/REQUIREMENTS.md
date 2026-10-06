@@ -3,17 +3,40 @@
 <!-- rev: 1192a9a2a7241d16 -->
 
 > This document is written for the CDAO, CRO, Chief AI Officer, third line and
-> compliance. It makes its case using the ten-requirement table below. If you'd
+> compliance. It makes its case using the requirement table below. If you'd
 > rather read the same case as a short article, with no table, read
-> ["From Tools to Traces: Why MCP is the Key to Agentic Data
-> Lineage"][blog-leadership] instead.
+> ["MCP and Agentic Data Lineage: A Governance
+> Framework"][blog-leadership] instead.
 
 ## TL;DR
 
-**The opportunity.** LLM agents now reach governed data directly through MCP —
-sometimes on behalf of a human being, or acting autonomously — and currently
-none of OpenTelemetry, MCP's own conventions, or OpenLineage records what data
-they touched, on whose authority, or where it went. That gap is closable.
+**The opportunity.** LLM agents now reach governed data directly through MCP.
+Sometimes they act on behalf of a human being, sometimes on their own authority.
+Currently none of OpenTelemetry, MCP's own conventions, or OpenLineage records
+what data they touched, on whose authority, or where it went. The dataset and
+call parts of that gap are closable. The authority part is a stated gap (RAID
+D28).
+
+**The cases these requirements are written for.** Three, and all three are ad hoc:
+
+1. **A human driving an ad hoc query** against a governed dataset, through a
+   chat interface or an agent.
+2. **An MCP call on behalf of a human** — the agent acting under a named
+   person's delegated authority.
+3. **An agent acting on its own authority** — no human in the loop at
+   the moment of access.
+
+**The discriminator is whether the work was declared in advance, and it bounds
+all eleven requirements below.** It is the **declaration-based** versus
+**interaction-derived** distinction that § 8 defines, and it is a property of
+the *work*, not of the caller. This document does not address static,
+declaration-based work. That includes a *scheduled* agent doing nightly work
+against a governed dataset: the work is a job declared before it runs, so
+OpenLineage's existing producer model serves it, and nothing here asks for
+anything on its behalf. We hold that as an assumption open to challenge rather
+than a finding (RAID **A26**), and § 11 lists it with the other bounds. What the
+three cases above share is that no job was declared before the access happened.
+That is why REQ3 and REQ10 have no mechanism to satisfy them today (§ 8).
 
 **What existing telemetry gives you, and what it doesn't?** Distributed tracing
 answers *how did this perform* — it samples by design and retains for weeks,
@@ -21,16 +44,17 @@ which is right for a latency question and wrong for a record you are obliged to
 keep. It can tell you a query ran. It can't tell you which customer's data fed
 the decision it enabled.
 
-**Why these ten, and not a generic AI governance checklist?** Each requirement
+**Why these eleven, and not a generic AI governance checklist?** Each requirement
 traces to a question a regulated function already has to answer — can
 leadership trust what an agent tells it, can compliance prove it afterwards —
 and to the specific way an agent-mediated interaction breaks that answer today.
-None are aspirational: each is testable, and each maps to an obligation already
-in force (§ 9), not invented for this workstream. Platform audit and tracing
+None are aspirational: each is testable, and each maps to an obligation or
+recognised practice listed in § 9, some in force and some voluntary guidance, not
+invented for this workstream. Platform audit and tracing
 both help; §2a and the paragraph above state why neither, on its own, answers
 either question.
 
-**The ten requirements**, each testable and checked against this workstream's
+**The eleven requirements**, each testable and checked against this workstream's
 own reference implementation:
 
 | | | |
@@ -45,8 +69,9 @@ own reference implementation:
 | **REQ8** | Demonstrable operation | Show the control *operated* over a period, not that it existed |
 | **REQ9** | Fitness at the point of decision | Reachable *when the decision is taken*, not on a reporting cycle |
 | **REQ10** | Reconstructable context | Both records linked, in both directions, and both survive |
+| **REQ11** | Evidential basis | The record declares **how it was derived**, so a reader can weigh it |
 
-**What is proven.** Four met, six partially met, none unmet, with the unmet half
+**What is proven.** Two met, nine partially met, none unmet, with the unmet half
 named in every case and a command to reproduce each row. See
 [`evidence-matrix.md`](evidence-matrix.md), and read it before relying on any
 requirement here.
@@ -55,14 +80,15 @@ requirement here.
 Postgres. Non-SQL query languages and unstructured data fall outside scope, and
 § 11 explains why that is the harder half rather than the next increment.
 
-**What it costs to adopt.** Carrying caller identity costs an MCP server
+**What it costs to adopt.** Carrying lineage parentage costs an MCP server
 nothing. Emitting lineage means every server that touches governed data has to
 emit it, because only the process that executed the statement can declare what
 it touched. Our working assumption is that adopters refactor their servers at
 the data-access seam (RAID D17, A12); we do not prescribe the route.
 
-**Naming.** Requirements are **REQ1–REQ10** throughout this document and the
-evidence matrix. RAID uses `Rnn` for **risks**, and the two are not related.
+**Naming.** Requirements are **REQ1–REQ11** throughout this document and the
+evidence matrix. REQ11 was added 2026-10-02; REQ1–REQ10 are unchanged and keep
+their numbers. RAID uses `Rnn` for **risks**, and the two are not related.
 
 ---
 
@@ -85,6 +111,29 @@ the signals do and do not carry. This document says why that matters to an
 organisation with regulatory exposure, and what satisfying the obligation would
 take. Read this first and the README second.
 
+**Two claims, stated separately and never merged (RAID D24).** They are separate
+because they hold to different extents, and merging them produces a
+contradiction.
+
+- **The gap claim generalises.** It covers any **runtime actor-initiated
+  consumption event**. Nothing in it is MCP-specific: a Job is declared in
+  advance, ownership hangs off the Job, and the actor varies per run. That holds
+  for a REST call, a GraphQL query, SDK-based access or a notebook.
+  [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484)'s
+  own body says as much — *"It isn't the only vector for this class of
+  interaction — REST APIs, GraphQL, and SDK-based access all exhibit the same
+  characteristic."*
+- **The demonstration claim does not.** What is built and verified is MCP, over
+  Postgres, through SQL. Everything beyond that is reasoned, not shown, and
+  `evidence-matrix.md` scores the implementation rather than the
+  generalisation.
+
+**Where the gap claim stops.** It covers consumption events where a *runtime
+actor* initiates the access. It is deliberately **not** stretched to all ad hoc
+data access with a human in a BI tool — that is also true, and it implicates
+every existing producer, which is the fastest available route to the scope
+objection this workstream exists to pre-empt.
+
 **Scope of the demonstration behind it:** the requirements below state the case
 generally, because the obligation is general. The build proves something
 narrower: **structured data reached through SQL**. This work does not address
@@ -93,7 +142,7 @@ address unstructured data in any form, including documents, object stores, and
 vector and embedding retrieval, which agents now both read and write. The reason
 is that dataset identity for unstructured retrieval remains unsolved, not merely
 unimplemented. Section 11 states this properly. We believe requirements REQ1 to
-REQ10 hold for those cases. Nothing here proves they can be met there.
+REQ11 hold for those cases. Nothing here proves they can be met there.
 
 ---
 
@@ -396,14 +445,14 @@ of a deployed system. For agents reaching governed data through tool calls, that
 assumption does not hold today. It fails silently, which is the worst property a
 safety-relevant gap can have.
 
-> **Sourcing (`mcp-lineage` RAID I18).** The quotations above come from the
+> **Sourcing.** The quotations above come from the
 > article body of
 > ["aigov!=aio11y: We are making the same mistake with AI that we made with
 > data"](https://www.bearingnode.com/post/aigov-aio11y-we-are-making-the-same-mistake-with-ai-that-we-made-with-data)
 > (Daniel Rolles, 5 July 2026), supplied by the author. The site does not render
-> a fetchable body to the usual converter, the same obstacle I18 records for the
+> a fetchable body to the usual converter, the same obstacle met with the
 > *Anatomy of Uncertainty* series. **Verified character-exact against the live
-> post 2026-07-30** (`public-lab` RAID I14), via a different extraction path.
+> post 2026-07-30**, via a different extraction path.
 >
 > **That post is part one of three.** The series continues in
 > ["aigov!=aio11y, part 2: Three tracks, one audit
@@ -485,7 +534,8 @@ ownership, not only for controls.
 
 ## 7. Requirements
 
-Testable statements. An agent-mediated interaction meets none of them today.
+Testable statements, scoped to the three ad hoc cases named in the TL;DR and
+bounded by § 11. An agent-mediated interaction meets none of them today.
 
 **REQ1 — Durability.** Every interaction between an actor and a governed data
 asset produces a record whose retention and completeness answer to the
@@ -518,6 +568,21 @@ record, at the time it acts. Provenance reconstructed after the fact from an
 indirect artefact, such as query text, network traffic or performance telemetry,
 is inference. Inference is not evidence.
 
+**This does not prohibit reconstruction, and the distinction decides whether
+this document's own method is allowed.** Actor identity in this design is
+reconstructed on read, not stamped on an event as a field. Each fact is captured
+at write time by the party that holds ground truth for it: the server for what
+was touched, the caller for its own unit of work, the resolution system for who
+a pseudonym belongs to (REQ4). The facts are brought together afterwards. That
+is **reconstruction by explicit identifier join**, and every fact it joins was
+*declared* by the party entitled to declare it. What this requirement prohibits
+is reconstruction by **heuristic**: deriving what was touched from query text
+somebody else emitted, or inferring an actor from traffic. A join is not an
+inference. Conflating the two would rule out the method this document proposes,
+so the line is drawn here rather than left to a reader. RAID **D02** rejected
+the inference proxy on exactly this basis. It did not reject correlation, which
+**REQ10** requires.
+
 **REQ7 — Survives the actor.** The record outlives the agent, the session, and the
 deployment. Ephemeral actors must not produce ephemeral accountability.
 
@@ -538,6 +603,29 @@ record of *why* sit on different planes (section 10) and must stay distinct. But
 they must be **linked, in both directions, and both must survive**. A reference
 into a context that sampling removed, or that expired first, is not a link.
 
+**What the link names, and why that is the whole of it.** The reference carries
+**provenance**: the span that caused this run to exist. It is **singular by
+construction**, whatever the surrounding job does —
+[`ParentRunFacet`](https://openlineage.io/docs/spec/facets/run-facets/parent_run)
+is the precedent, naming *a* parent rather than every ancestor. The adjacent
+fact it deliberately does not carry is **composition**, the spans a run consists
+of, which is 1:N by nature and is what a long-running multi-trace job would
+need.
+
+**This is stated here because it is load-bearing and was previously asserted
+nowhere a reader could find it.** It lived only as a comment in
+`mcp_server_ol/src/mcp_server_ol/lineage.py`, and the earlier version of it
+rested on a 1:1 mapping — one tool call, one run, one trace. That is true within
+the scoped unit of work and was the wrong thing to lean on, because it stops
+holding the moment the gap claim generalises beyond MCP. **What distinguishes
+this from [OpenLineage
+#4588](https://github.com/OpenLineage/OpenLineage/issues/4588), which drew a scope objection, is the kind of claim rather than cardinality: a provenance pointer is
+not a work record.** #4588 was reaching for composition, which is why
+granularity was the objection against it; provenance does not attract it. Raised
+at the OpenLineage TSC 2026-09-30 and recorded as RAID **D22**/**A19**; the
+docstring-only visibility failure follows the **D11** precedent. § 11 states the
+run-shape boundary this rests on.
+
 REQ5 requires a record of any limit applied to a result. REQ10 makes that record
 answerable. It is how third line establishes not merely that something read
 5,000 rows, but that the figure derived from them then reached an audience as
@@ -550,9 +638,46 @@ sit under the tracing backend's default sampling or retention schedule. It forms
 part of the control record and needs retention to match.
 
 > **Evidence.** [`evidence-matrix.md`](evidence-matrix.md)
-> tests, scores and reproduces each requirement: four met, six partially met,
+> tests, scores and reproduces each requirement: two met, nine partially met,
 > none unmet, with the unmet half named in every case and a command to
 > reproduce each row. Read it before relying on any requirement above.
+
+**REQ11 — Evidential basis.** The record declares **how it was derived**, so a
+reader can weigh it. Evidence whose derivation is unstated cannot be weighed,
+and two records of equal apparent authority may rest on very different
+foundations.
+
+Derivation sits on a scale, and the position determines what the record is
+worth:
+
+| | Method | Evidences |
+|---|---|---|
+| **1** | Parsed from statement text | Intent **as written** — views, triggers, cascades, partition routing and function bodies are all invisible |
+| **2** | Read from the engine's resolved plan | Intent **as planned** — views resolved. Still not execution: adaptive execution and dynamic pruning can change what physically runs |
+| **3** | Observed from execution | **Effect** |
+
+A consumer receiving a lineage event today **cannot tell which position produced
+it**, because no field expresses it. Two conformant events can sit at positions 1
+and 3, render identically in the same catalogue, and be worth very different
+amounts.
+
+This requirement is **not** a statement about our parser's particular blind
+spots. It applies to any producer, and it is checkable: either the record says
+how it was derived or it does not.
+
+**Where this implementation sits, stated rather than implied:** position 1, and
+every event says so (RAID D26). The adjacent requirement REQ5 governs the
+*data's* derivation — the transform, its inputs, truncation limiting the result.
+REQ11 governs the *record's* derivation. Conflating them is what left this
+requirement unstated until 2026-10-02, when the tags that serve it had already
+been emitting for months with no requirement to trace to.
+
+**The limit, because it bounds what this requirement can deliver.** The
+mechanism that expresses derivation is a free-form tag facet, and the
+specification places no obligation on a consumer to preserve, return or surface
+a key it does not recognise (RAID R14, I45). So a record can satisfy REQ11 at
+the point of emission and still fail to inform the person weighing it. That is a
+gap in the standard, not in the requirement.
 
 ## 8. What this implies technically
 
@@ -578,8 +703,8 @@ short:
   specification carries a reference to the trace that produced an event, and the
   reverse pointer is convention rather than specification. The reference
   implementation emits both under a vendor prefix, deliberately, and
-  the ask to standardise it is filed at
-  [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484) (RAID D15, R11).
+  the standard facet is our proposed answer to the open question at
+  [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484), not yet posted there (RAID D15, R11).
 - **Platform-native audit does not satisfy REQ3, REQ9 or REQ10**, for the structural
   reasons in section 2a. The platform sees the connection, not the actor behind
   it, and never sees purpose. That much holds wherever the platform produces the
@@ -601,10 +726,25 @@ REQ10 is that sentence as a requirement, and
 [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484)
 is the ask that would standardise it.
 
+⚠️ **Corrected 2026-09-30 — one of those five components no longer stands, and
+the published post is left as written rather than retro-fitted.** The
+**interaction-derived value on the jobless `type` field** is withdrawn.
+`LineageFacet.json` shipped 2026-08-14 at facet 1-0-0 via
+[OpenLineage PR #4804](https://github.com/OpenLineage/OpenLineage/pull/4804),
+after part three was published, and in it `type` is a **closed enum** —
+`["DATASET"]` or `["JOB"]` — describing the **target** of a data flow rather than
+the initiator. Verified against the shipped client at 1.53.0, where the literals
+are enforced in code and no field in the module carries an actor, initiator,
+trace or span. The declared-versus-observed distinction that value was reaching
+for now exists in part, as `LineageJobFacet`'s JobEvent/RunEvent semantics, but
+that facet carries no initiator and is not a Run facet — so the remainder folds
+into the runtime-actor facet. **Four components stand; the ask to OpenLineage is
+two Run facets, not three changes.** See `README.md` § *Impact on the standards
+and their communities* → OpenLineage item 3.
+
 Two coined terms carry the modelling argument, and this document should use them
-rather than re-deriving them (`public-lab` RAID I14 — the vocabulary-consistency
-rule; the internal standards document that originated it does not ship, per
-`public-lab` RAID D19):
+rather than re-deriving them (the lab's vocabulary-consistency rule, which comes
+from an internal standards document that is not published):
 
 - **Declaration-based** lineage *"records a relationship that already existed
   before the event does"* — an ETL job knows its inputs and outputs before it
@@ -634,9 +774,20 @@ field."* **The issue body does not propose either.** It says *"We're not proposi
 solutions here"*, and asks instead whether the extensible `type` string is the
 right hook — suggesting `AGENT` or `MCP_CLIENT` as illustrations, not
 `interaction-derived` — and how a runtime actor's identity should be expressed, with
-the namespace/name model floated and no facet proposed. Recorded at `public-lab`
-RAID I14; do not repeat part three's characterisation of the issue in anything
+the namespace/name model floated and no facet proposed. Recorded internally;
+do not repeat part three's characterisation of the issue in anything
 this lab publishes, and cite the issue body for what the issue asks.
+
+**Second caveat, added 2026-09-30: the premise of #4484's own question has since
+been settled against it.** The question was whether *"the extensible `type`
+string"* is the right hook. As shipped, the field is **not extensible** — in
+`LineageFacet.json` 1-0-0 (2026-08-14, PR #4804) and in the client at 1.53.0,
+`LineageEntry.type` is a closed enum of `["DATASET"]` or `["JOB"]` naming the
+**target** of a data flow. So `AGENT` and `MCP_CLIENT` are not available as
+illustrations or otherwise, and the hook question has an answer: **no.** #4484 was
+filed 2026-04-23, four months before the facet shipped, so the question was
+reasonable when asked and is simply no longer open. Per RAID **D23**, this
+paragraph's claims are version-cited for exactly this reason.
 
 **Where the reference implementation stands against that five-part design,
 verified against `mcp_server_ol/src/mcp_server_ol/lineage.py` on 2026-07-30:**
@@ -646,21 +797,27 @@ verified against `mcp_server_ol/src/mcp_server_ol/lineage.py` on 2026-07-30:**
 | An interceptor at the MCP boundary | ✅ Emission sits in the server's tool path, not in the agent |
 | A `RunEvent` per call — tool/agent pairing as Job, invocation as Run, tables as Dataset | ✅ |
 | The OTel trace ID carried as a single fact on the run event | ✅ `TraceContextRunFacet`, bespoke under our own prefix because no standard facet carries it (RAID D15) |
-| A runtime-actor facet on the Run carrying agent, model, version, session | ⬜ **Not emitted, and deliberately so.** The event carries `lineage.actor` = `absent` instead, because MCP supplies no caller identity to carry (REQ3, RAID A03, I29). The facet is what #4484 asks for; the tag records its absence honestly in the meantime |
-| The `interaction-derived` value on the jobless `type` field | ⬜ **Not emitted.** No `type` value is set at all today |
+| A runtime-actor facet on the Run carrying agent, model, version, session | ⬜ **Not emitted, and deliberately so.** The event carries `lineage.actor` = `absent` instead, because MCP supplies no caller identity to carry (REQ3, RAID A03, I29). The facet is our proposed answer to #4484's open question, not yet posted; the tag records its absence honestly in the meantime |
+| The `interaction-derived` value on the jobless `type` field | ❌ **Withdrawn 2026-09-30, not merely unemitted.** The field is a closed enum describing a data flow's target, so the value cannot be added without a breaking schema change and would make the wrong claim if it were. See the correction above |
 
-The last two rows are gaps between the published design and the implementation,
-not disagreements with it, and they are not equivalent. The actor facet is
+**Revised 2026-09-30. The last two rows were previously described as two gaps of
+unequal cost; they are not the same kind of thing at all.** The actor facet is
 **deliberately** absent — there is no caller identity to put in it, which is the
-finding. The `type` value is simply **not set yet**, and it is the cheaper of the
-two to close. Both are tracked in `public-lab` RAID I14 and should be closed or
-consciously scoped out before the RFC drafts are filed, since #4484's open
-question 3 is precisely whether that `type` field is the right hook.
+finding, and it remains an open ask. The `type` value was called *"simply not set
+yet, and the cheaper of the two to close"*; that was written against an April
+reading of the spec and is wrong. It is not cheap, it is **not available**, and
+the question it was the hook for has moved to the runtime-actor facet.
+
+One row therefore remains a gap between the published design and the
+implementation, tracked internally and to be closed or consciously
+scoped out before the RFC drafts are filed. **#4484's open question 3 — whether
+that `type` field is the right hook — now has an answer: no.** Answering it in
+the thread is owed, and is the substantive half of the reply to
+`jakub-moravec`'s *"what are the gaps that you see?"*
 
 ## 9. Regulatory context
 
-✅ **Verified against primary or authoritative sources, 2026-08-20** (`public-lab`
-RAID A03). This lab's own standard for upstream contribution holds citations to
+✅ **Verified against primary or authoritative sources, 2026-08-20.** This lab's own standard for upstream contribution holds citations to
 the same bar as code: a wrong citation in front of a compliance audience costs
 more credibility than a wrong attribute name does with maintainers.
 
@@ -671,13 +828,11 @@ more credibility than a wrong attribute name does with maintainers.
   information on the logic of automated decisions (Art. 15); erasure (Art. 17);
   restrictions on automated individual decision-making (Art. 22); and the
   controller's own records of processing activities (Art. 30) — the last is an
-  obligation on the controller, not a data-subject right, and should not be
-  phrased as one.
+  obligation on the controller, not a data-subject right.
 - **BCBS 239.** Risk data aggregation and reporting: accuracy, completeness and
   traceability. Confirmed only against convergent secondary sources — the
-  primary BIS text did not extract cleanly for verification — so do **not**
-  cite specific principle numbers from it without a follow-up primary-text
-  check. BearingNode already holds a mapping of this to the D/I O11y framework.
+  primary BIS text did not extract cleanly for verification — so specific
+  principle numbers are not cited here.
 - **DORA.** Regulation (EU) 2022/2554. Operational resilience for EU financial
   entities and their ICT third-party providers, in force since 2023-01-16,
   applicable from 2025-01-17.
@@ -706,15 +861,14 @@ art **D/I O11y** — is:
 — [*The Rise of Data and Information
 Observability*](https://www.bearingnode.com/post/the-rise-of-data-and-information-observability-moving-beyond-traditional-methods).
 Quoted verbatim, and to be quoted verbatim wherever it appears: the two clauses
-are the definition, not alternatives (`public-lab` RAID I01, I14).
+are the definition, not alternatives.
 
 BearingNode's existing model already positions observability as serving
 **Govern**, **Comply** and **Manage** rather than existing for its own sake, as
 the [Comply + Govern + Management + D/I O11y Euler
 diagram](artefacts/BearingNode-AM+DIo11y-joined-mapped.png)
 shows. It is vendored into `artefacts/` rather than linked from BearingNode's
-private `branding` submodule, which this workstream does not ship
-(`public-lab` RAID D05).
+private `branding` submodule, which this workstream does not ship.
 
 This workstream is the first proof point for that model in the agentic case: the
 same capability model, applied where the actor is an agent rather than a person
@@ -794,6 +948,25 @@ deliberately rather than by omission.
 
 **Not covered:**
 
+- **Static, declaration-based work, including scheduled agent work.** A
+  scheduled pipeline, and equally an agent doing a nightly piece of work against
+  a governed dataset, has job identity, parent job identity and a producer
+  definition today, and those mechanisms work. The gap described here is not in
+  that case. The discriminator is declaration, not autonomy. A scheduled agent's
+  nightly work is a job declared before it runs and is already served. The same
+  agent asked an ad hoc question is interaction-derived and is the gap. We hold
+  this as an assumption open to challenge rather than a finding (RAID **A26**).
+  We have not surveyed scheduled-agent deployments, and if that case breaks
+  somewhere the existing producer model does not reach, the boundary is drawn in
+  the wrong place.
+
+  **The two scopes touch at one seam, and it is a complement rather than a
+  counter-example.** A scheduled agent that reaches a governed dataset *through
+  MCP* has a parent run id that its orchestrator already minted, and nothing
+  carries it across the tool-call boundary. The chain is intact up to the MCP
+  seam and breaks across it. That is what the `_meta` parentage ask addresses.
+  The trace reference REQ10 depends on serves the ad hoc cases, where no parent
+  run exists to point at.
 - **Non-SQL query languages.** SPARQL, Cypher, Gremlin and other graph
   traversals.
 - **Unstructured data in all forms.** Documents, object stores, vector indexes
@@ -802,6 +975,30 @@ deliberately rather than by omission.
 - **Data that reaches a decision without a tool call at all.** A person exports a
   spreadsheet, attaches it to a chat, and the agent reasons over the contents.
   This case differs in kind from the two above, and § 11a states why.
+- **Run shapes other than a single interaction.** The scoped unit of work is one
+  tool call producing one run. A long-running job spanning many traces and many
+  spans is out of scope (RAID **D22**). **Added 2026-09-30, after it was raised
+  by a maintainer at the OpenLineage TSC** — the bound was always there, in the
+  positive scope statement rather than in this list, which meant a case that had
+  been excluded read as one that had never been considered.
+
+  **The adverse scenario, stated rather than left to be discovered.** Applied to
+  a multi-trace job anyway, the trace reference REQ10 depends on is not degraded
+  but **ill-defined**: there is no single initiating span, so *which span?* has
+  no answer, and the facet would carry one arbitrary member of a set while
+  looking like a complete provenance record. That is the silent-incompleteness
+  failure this workstream exists to describe, so committing it would be
+  self-refuting.
+
+  **Why this is not simply the next step.** It needs *composition* — the spans a
+  run consists of — which is a different fact from provenance, 1:N by nature, and
+  the shape [OpenLineage
+  #4588](https://github.com/OpenLineage/OpenLineage/issues/4588) drew a granularity
+   objection for proposing. Whether it should be asked for at all, and of whom,
+  belongs to the trace-context working group forming out of that TSC. **It is a
+  further recommendation this workstream has surfaced and is deliberately not
+  making** — the same posture § 11 takes throughout, and the same one R12 takes
+  towards unstructured data.
 
 **We do not expect to close this gap by extending the same approach**, and
 saying so matters more than claiming coverage.
@@ -826,7 +1023,7 @@ matter of convention, so it closes now. The unstructured case needs its own
 work, starting from the identity question rather than from instrumentation, and
 it is the more valuable problem.
 
-We believe requirements REQ1 to REQ10 apply unchanged to unstructured access.
+We believe requirements REQ1 to REQ11 apply unchanged to unstructured access.
 Nothing establishes that anything can satisfy them there today.
 
 ## 11a. The case that bypasses the tool boundary, and what we assume about it

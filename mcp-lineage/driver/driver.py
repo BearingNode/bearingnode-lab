@@ -82,7 +82,7 @@ TABLES = ["claim", "contract", "private_party", "catalog", "premium"]
 # ordinary traffic. Deliberately no persona in any of these names — see the
 # module docstring and test-strategy.md's scope boundary. Idea only (a
 # weighted list, one picked per step) borrowed from OpenTelemetry's own demo
-# load generator's dispatcher shape (RAID A14); nothing here is copied from
+# load generator's dispatcher shape; nothing here is copied from
 # it, and no traceparent-injection precedent exists there either.
 ORDINARY_OPERATIONS = [
     ("ordinary_span", 3),

@@ -1,6 +1,6 @@
 """Reading the caller's lineage identity out of MCP `_meta`.
 
-**This is the gap, made concrete.** RAID D10, Claim 2b: MCP has no convention
+**This is the gap, made concrete.** RAID D10, the `_meta` parentage ask: MCP has no convention
 for propagating a caller's *lineage* run and job identity. Trace context is
 settled convention — instrumentations SHOULD inject `traceparent`, `tracestate`
 and `baggage` into `params._meta` (RAID I05) — but nothing carries OpenLineage
@@ -10,8 +10,8 @@ cannot populate `ParentRunFacet` at all.
 So we use a bespoke, reverse-DNS-prefixed key. It works: `_meta` is declared
 `extra: allow`, and arbitrary keys survive parsing into `model_extra` (verified
 against `mcp` 1.28.1). That is the point — the mechanism is already there, and
-the missing piece is agreement on the key, which is exactly what the RFC asks
-for. When a standard key exists, this module changes by one constant.
+the missing piece is agreement on the key, which is what the planned refiling of MCP #2638
+will ask for. When a standard key exists, this module changes by one constant.
 
 Absent the key, the server emits with no parent. The actor is then recorded as
 unknown rather than guessed at — that absence *is* the gap the RFC describes,
@@ -24,11 +24,21 @@ failed got no signal at all. Absence is the normal condition of every
 pre-convention MCP client on earth. Malformed is an error, and it is reported
 as one: on the event, so the lineage consumer sees it, and as a dropped-identity
 count, so the operator does. See `ParentStatus`.
+
+**A run id that is not a UUID is malformed, and saying so here is the whole of RAID I47.**
+`ParentRunFacet` validates `runId` with `uuid.UUID()`, in code, with the constraint stated
+nowhere in the specification's prose. So a block carrying all three required fields with a
+session string in `parentRunId` read as *supplied* here and then raised inside
+`ParentIdentity.to_facet()` — which loses the entire event rather than emitting it
+unparented, and counts the loss as an emission failure rather than a broken identity. That
+is I29's own failure one layer down, reachable by the mistake a caller adopting this
+convention for the first time is most likely to make.
 """
 
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -37,7 +47,12 @@ from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
-from mcp_server_ol.lineage import ParentIdentity
+from mcp_server_ol.lineage import (
+    ACTOR_MALFORMED,
+    ACTOR_SUPPLIED,
+    ACTOR_UNKNOWN,
+    ParentIdentity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +70,19 @@ class ParentStatus(StrEnum):
     for — it is the gap, and it must stay quiet enough to be the normal case.
     `MALFORMED` means a caller tried and we could not read it, which is a defect
     in somebody's integration and must be loud.
+
+    The three values are `lineage.py`'s rather than this module's, because they
+    go on the wire as `lineage.actor`: the emitter owns the vocabulary
+    (`TAG_VOCABULARY`) and this enum names the semantics, so the two cannot
+    drift apart (RAID D26). `TraceparentStatus` below has the same shape and is
+    deliberately **not** bound to them — it describes a span attribute, not a
+    lineage tag, and coupling the two would make a change to one break the
+    other.
     """
 
-    PRESENT = "supplied"
-    ABSENT = "absent"
-    MALFORMED = "malformed"
+    PRESENT = ACTOR_SUPPLIED
+    ABSENT = ACTOR_UNKNOWN
+    MALFORMED = ACTOR_MALFORMED
 
 
 @dataclass(frozen=True)
@@ -101,6 +124,9 @@ def parent_from_meta(meta: Any) -> ParentLookup:
     run_id = block.get("parentRunId")
     namespace = block.get("jobNamespace")
     name = block.get("jobName")
+    root_run_id = block.get("rootRunId")
+    root_namespace = block.get("rootJobNamespace")
+    root_name = block.get("rootJobName")
     if not (run_id and namespace and name):
         if not block:
             # An empty object is a client wiring the key up and populating
@@ -116,14 +142,31 @@ def parent_from_meta(meta: Any) -> ParentLookup:
         )
         return ParentLookup(identity=None, status=ParentStatus.MALFORMED)
 
+    # RAID I47. Checked here rather than left to raise at facet construction, so a bad
+    # run id is reported as what it is — a broken identity — instead of costing the whole
+    # event. `rootRunId` is checked only when the root triple is complete, because that is
+    # exactly when `to_facet()` constructs a `Root` and so the only time its format can
+    # matter; rejecting it otherwise would refuse a parent that would have worked.
+    candidates = [("parentRunId", run_id)]
+    if root_run_id and root_namespace and root_name:
+        candidates.append(("rootRunId", root_run_id))
+    not_uuid = [key for key, value in candidates if not _is_uuid(value)]
+    if not_uuid:
+        logger.warning(
+            "lineage: %s carries a non-UUID %s; emitting without parent",
+            LINEAGE_META_KEY,
+            ", ".join(not_uuid),
+        )
+        return ParentLookup(identity=None, status=ParentStatus.MALFORMED)
+
     return ParentLookup(
         identity=ParentIdentity(
             run_id=str(run_id),
             job_namespace=str(namespace),
             job_name=str(name),
-            root_run_id=_opt(block.get("rootRunId")),
-            root_job_namespace=_opt(block.get("rootJobNamespace")),
-            root_job_name=_opt(block.get("rootJobName")),
+            root_run_id=_opt(root_run_id),
+            root_job_namespace=_opt(root_namespace),
+            root_job_name=_opt(root_name),
         ),
         status=ParentStatus.PRESENT,
     )
@@ -230,6 +273,21 @@ def _extract(meta: Any) -> Any:
         return extra.get(LINEAGE_META_KEY)
 
     return getattr(meta, LINEAGE_META_KEY, None)
+
+
+def _is_uuid(value: Any) -> bool:
+    """Whether `openlineage-python` will accept this as a run id (RAID I47).
+
+    Tested with `uuid.UUID()` deliberately, because that is literally what the client's
+    own `runId` validator calls — so this accepts exactly what the facet accepts, no
+    stricter and no looser. A 32-character hex string with no dashes passes there, and
+    so must pass here.
+    """
+    try:
+        uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return True
 
 
 def _opt(value: Any) -> str | None:

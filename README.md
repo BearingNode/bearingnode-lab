@@ -6,15 +6,15 @@ BearingNode Lab is our public research repository for governing, managing and ob
 
 We publish the work here so that it can be examined, challenged and used by the communities working on standards, open-source projects, research and organisational practice.
 
-This edition is the foundation of the lab: licence, governance model, contribution terms, security policy, citation metadata, principles, disclosure statement, curation notes and third-party notices — see *Files* below for the complete list.
+The foundation of the lab is its licence, governance model, contribution terms, security policy, citation metadata, principles, disclosure statement, curation notes and third-party notices — see *Files* below for the complete list. The first workstream, [`mcp-lineage/`](mcp-lineage/README.md), is published alongside it.
 
-Substantive workstreams will be added as they are ready.
+Further workstreams will be added as they are ready.
 
 ## TL;DR
 
 - BearingNode Lab is our research repository for governing, managing and observing AI, software, and data and information. This repository is where we argue the case in a form that can be checked.
-- This edition is the foundation and nothing else: licence, governance, contribution terms, etc (see *Files* below).
-- Workstreams, one folder per workstream, will be added to the repo as they are cut from the private lab.
+- The foundation: licence, governance, contribution terms, etc (see *Files* below), and one workstream, [`mcp-lineage/`](mcp-lineage/README.md).
+- Workstreams get one folder each and are added to the repo as they are cut from the private lab. `mcp-lineage/` is the first.
 - Built with AI throughout. [`DISCLOSURE.md`](DISCLOSURE.md) says what that means, what we do not claim because of it, and why we ask you to verify what you find here rather than adopt it.
 - The ideas are yours. Take them into your own work, your standards proposals, your teaching. The repository's own materials are licensed; see *Using this work*.
 - If you think something is wrong, say so. The issue forms in `.github/` include one for a question or challenge, and it is there because we expect to use it.
@@ -50,8 +50,9 @@ Observability*](https://www.bearingnode.com/post/the-rise-of-data-and-informatio
 The same failure mode shows up on the AI side: see [*AI Gov ≠ AI O11y: We Are
 Making the Same Mistake with AI That We Made with
 Data*](https://www.bearingnode.com/post/aigov-aio11y-we-are-making-the-same-mistake-with-ai-that-we-made-with-data).
-As the corresponding workstreams are published, this section will link to
-them directly.
+The first workstream, [`mcp-lineage/`](mcp-lineage/README.md), applies this frame
+to an AI agent's access to governed data. Further workstreams will be linked here
+as they are published.
 
 ## About BearingNode
 
@@ -66,9 +67,9 @@ With this repo we move away from "thought leadership" and towards "do leadership
 
 ## Lab Foundation
 
-The foundation, on its own — see *Files* below for the complete list.
+The foundation — see *Files* below for the complete list.
 
-It is published before any workstream, so the scaffolding is already there when one lands.
+It was published before any workstream, so the scaffolding was already there when the first one landed.
 
 The lab is built with AI throughout, and [`DISCLOSURE.md`](DISCLOSURE.md) sets out what that means in practice. The short form is that we ask you to verify what you find here rather than adopt it.
 
@@ -94,6 +95,7 @@ recorded, which is why they ship unpolished.
 | `CURATION.md` | Where this repository's contents came from, what was edited on the way out, and how to read the status registers. |
 | `THIRD-PARTY-NOTICES.md` | What isn't BearingNode's own work, and where to find its licence and terms. |
 | `AGENTS.md` | Instructions for agents and contributors working in this repository. |
+| `mcp-lineage/` | The first workstream: a reference implementation and requirements for the lineage of an AI agent's data access through MCP, with an evidence matrix and a public risk, assumption, issue and decision register. Start at its own `README.md`. |
 | `.github/` | Issue forms for a bug and for a question or challenge, and the pull-request template. |
 | `.gitignore` | What this tree deliberately does and does not exclude, documented at the top of the file. |
 
@@ -101,14 +103,20 @@ recorded, which is why they ship unpolished.
 
 A workstream is a scoped body of engineering work. When one is ready to land it is cut into its own top-level folder, with its own README and its own edition history.
 
-They will be published in due course.
+Published so far:
+
+- [`mcp-lineage/`](mcp-lineage/README.md): lineage for ad hoc, actor-initiated data access through MCP, built and tested as a reference implementation.
+
+Further workstreams will follow.
 
 ### Editions
 
 | Edition | Cut from (branch) | Commit | Date |
 |---|---|---|---|
 | `2026.08` | `main` | `49fd3ec7c4b327f38b2feec7deaaae49f1d2c5d8` | `2026-08-10` |
+| `2026.08.2` | `main` | `9833bbdd4a920d7a17c2e43af3ce4d7ac47a261c` | `2026-08-28` |
 | `2026.09` | `main` | `c3d42a2059e6798540998128fa768bc3cc1ff608` | `2026-09-27` |
+| `2026.10` | `main` | `6bb55cd337db102fd8b7c24c85e30545c31939f9` | `2026-10-06` |
 
 An edition is a snapshot cut from BearingNode's private lab, recorded here with
 the branch, the full commit and the date it was taken from. Those references are
@@ -117,6 +125,11 @@ reconciled internally, and so a claim made here can be traced to the exact state
 it was made from. This table only ever gains rows — never edited or removed
 once added, so it accumulates the full history of what each edition was cut
 from rather than pointing at only the latest one.
+
+The `2026.08.2` row was added after the fact. That edition, the first to publish
+`mcp-lineage/`, was cut from a working tree that had not yet been committed, and
+the commit recorded here is the one made afterwards that holds the tree as it
+shipped. Its date is the `date-released` in `CITATION.cff` at that edition.
 
 ## Who this is for
 

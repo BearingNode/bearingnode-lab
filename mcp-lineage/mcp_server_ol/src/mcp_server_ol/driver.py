@@ -77,11 +77,6 @@ class LineageEmissionError(RuntimeError):
     """
 
 
-# Statements that touch no table are not lineage events. Emitting a run for
-# every `SELECT 1` health check would bury the signal the demo exists to show.
-_UNINTERESTING: tuple[str, ...] = ()
-
-
 def parse_statement(sql: str) -> ParsedStatement:
     """Parse one statement into declared inputs and outputs.
 
@@ -247,11 +242,11 @@ class LineageSqlDriver(SqlDriver):
             # record — which is the point of the mode.
             self._safe_emit(self._emitter.complete, run_id, statement, parent, actor)
 
-        # Demo-environment workaround, not a permanent fix: BatchSpanProcessor's
-        # periodic background flush does not fire reliably under this WSL2/Docker
-        # Desktop container, so spans queue and never export. force_flush() here
-        # makes export synchronous with the call. Revert before relying on this
-        # for anything beyond today's live demo.
+        # Export is made synchronous with the call because BatchSpanProcessor's
+        # periodic background flush did not fire reliably in the WSL2/Docker Desktop
+        # environment this was developed in, so spans queued and never exported. It
+        # costs up to a second on every call, and a deployment should rely on the
+        # batch processor and remove it (RAID I62).
         #
         # Guarded rather than called unconditionally: outside a configured SDK
         # (unit tests, or any deployment that never calls telemetry's setup),

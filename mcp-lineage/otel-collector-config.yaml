@@ -1,8 +1,8 @@
 # Sampling is a configured policy here, not a given. Software observability
 # tooling samples because it can afford to, so ordinary traffic falls through
 # to a 10% probabilistic policy. Traces that touch governed data do not: the
-# two keep-policies below run first and retain them in full, so a trace
-# reference on a lineage event always resolves. Delete them and this is plain
+# two keep-policies below run first and retain them in full, so sampling
+# is never the reason a trace reference on a lineage event fails to resolve. Delete them and this is plain
 # ~10% sampling again (the rate is a parameter, not a property), against Marquez, which receives every OpenLineage event
 # with no equivalent knob. The contrast is a choice of policy, not of tracing.
 receivers:
@@ -30,9 +30,10 @@ processors:
       # The broader form of the same idea, and a candidate position for the RFC:
       # any span that produced an OpenLineage event carries `lineage.run_id`, so
       # this keeps every trace in which an agent touched governed data, at any
-      # sampling rate. The consequence is the one that matters — a trace
-      # reference on a lineage event *always resolves*, which is R09 leg (b)
-      # answered rather than mitigated. Sampling remains an economic decision
+      # sampling rate. The consequence is the one that matters: sampling can
+      # no longer be the reason a trace reference on a lineage event fails to
+      # resolve, which answers R09 leg (b) for sampling. The client injecting
+      # `traceparent` and the backend still holding the trace remain assumptions. Sampling remains an economic decision
       # for ordinary traffic; a governed data interaction is not ordinary
       # traffic and is not subject to it.
       - name: always-keep-data-access

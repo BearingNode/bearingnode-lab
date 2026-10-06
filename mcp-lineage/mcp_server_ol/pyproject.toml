@@ -9,10 +9,10 @@ dependencies = [
     # Pinned: upstream is dormant since 2026-01-22 (RAID I13).
     "postgres-mcp==0.3.0",
     # OpenLineage client — never hand-roll event JSON, per this lab's own OpenLineage standard.
-    "openlineage-python==1.52.0",
+    "openlineage-python==1.53.0",
     # SQL parser. Rust extension; manylinux_2_28 cp310-abi3 wheels exist for
-    # x86_64 and aarch64, so no source build on our targets — RAID D09/R05.
-    "openlineage-sql==1.52.0",
+    # x86_64 and aarch64, so no source build on our targets.
+    "openlineage-sql==1.53.0",
     # Software-observability plane. RAID D12: a lineage store cannot report on
     # events it never received, so lineage *absence* has to surface here — the
     # instrumented server had no OTel at all until RAID I29, which is why the

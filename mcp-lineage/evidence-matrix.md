@@ -4,27 +4,30 @@
 
 ## TL;DR
 
-**What this is.** A scorecard against the ten requirements in
+**What this is.** A scorecard against the eleven requirements in
 [`REQUIREMENTS.md`](REQUIREMENTS.md), built on the same discipline a model
 benchmark table needs to be credible: the benchmarks were **named in advance**,
 the method **reproduces**, and the **failures are in the table**.
 
-**The score: four met, six partially met, none unmet.**
+**The score: two met, nine partially met, none unmet.**
 
 | Met ✅ | Partially met 🟡 |
 |---|---|
-| REQ1 Durability | REQ3 Actor identity — no authority model |
-| REQ2 Asset identity | REQ4 Privacy — principle, not enforcement |
-| REQ6 Declared, not inferred | REQ5 Derivation — agent-side unrecorded |
-| REQ7 Survives the actor | REQ8 Demonstrable operation — countable, not continuous |
+| REQ2 Asset identity | REQ1 Durability — fail-open by default, so not every interaction |
+| REQ6 Declared, not inferred | REQ3 Actor identity — no authority model |
+| | REQ4 Privacy — principle, not enforcement |
+| | REQ5 Derivation — agent-side unrecorded |
+| | REQ7 Survives the actor — "outlives the deployment" not demonstrated |
+| | REQ8 Demonstrable operation — countable, not continuous |
 | | REQ9 Fitness at decision — no consumer at decision time |
 | | REQ10 Reconstructable context — link built, retention parity not |
+| | REQ11 Evidential basis — declared, but not interoperable |
 
 **Not all green is the same green.** Every row carries an evidence class. Class
 **A** means the claim was read back out of Marquez or Jaeger over HTTP after the
 session closed, so it survives leaving our process. Class **C** means we
 asserted it in-process, which proves our code does what we think and nothing
-about whether a consumer can read it. Seven of the ten rows are class A.
+about whether a consumer can read it. Eight of the eleven rows are class A.
 
 **The finding the prose had not produced.** Read down the unmet halves and they
 sort into three kinds, which is more useful than a count:
@@ -45,13 +48,14 @@ workstream argues against, made by its own authors. The row records it.
 **Bounds.** Structured data reached through SQL, over MCP, against Postgres.
 See § *What we deliberately do not claim* at the foot before quoting any of this.
 
-**Naming.** **REQ1–REQ10** are requirements. RAID uses `Rnn` for **risks**; the
+**Naming.** **REQ1–REQ11** are requirements. RAID uses `Rnn` for **risks**; the
 two are unrelated.
 
 ---
 
-**Status:** 2026-07-28, REQ8 corrected on review. Generated against commit `43b2f2e`+.
-**Companion to:** [`REQUIREMENTS.md`](REQUIREMENTS.md), holding the ten
+**Status:** 2026-10-06. REQ8 was corrected on review, and REQ1 and REQ7 were moved
+to Partially met. Every `uv run pytest` command below was last run on 2026-10-06.
+**Companion to:** [`REQUIREMENTS.md`](REQUIREMENTS.md), holding the eleven
 requirements this matrix tests, and [`README.md`](README.md), the technical
 statement.
 **RAID:** I25.
@@ -65,13 +69,13 @@ that table credible is not the scores. It is that somebody **named the benchmark
 in advance**, the method **reproduces**, and the **failures appear in the table**.
 
 This applies the same discipline to a governance claim. `REQUIREMENTS.md` states
-ten requirements for observability of AI interaction with data. This document
+eleven requirements for observability of AI interaction with data. This document
 says, for each one, what we built, what test proves it, how strong that evidence
 is, and, where the implementation does not meet the requirement, that it does
 not meet it.
 
-**A matrix with ten green rows would be marketing.** Four of the rows below are
-Met and six are Partially met, with the unmet half named in each case.
+**A matrix with eleven green rows would be marketing.** Two of the rows below are
+Met and nine are Partially met, with the unmet half named in each case.
 
 **One row has already changed.** REQ8 first read Not met, on reasoning that turned
 out to instance the very confusion this workstream argues against. It now reads
@@ -108,6 +112,18 @@ query languages and unstructured data fall outside scope, and they are not merel
 untested. See `REQUIREMENTS.md` § 11 and RAID D16/R12. That bounds every verdict
 below.
 
+**And this matrix scores the demonstration, not the gap claim.** The gap
+generalises to any runtime actor-initiated consumption event; the evidence does
+not, and the two are stated separately for that reason (RAID D24). Every verdict
+below is about **MCP, over Postgres, through SQL**. None of them is evidence
+about a REST call, a GraphQL query, SDK-based access or a notebook, even where
+the requirement itself applies there unchanged.
+
+**And so does run shape.** The scoped unit of work is a **single interaction** —
+one tool call, one run. Every verdict below is read against that shape; a
+long-running job spanning many traces is out of scope (RAID D22), and REQ10 is
+the row where the difference bites rather than merely applying.
+
 ### Reproducing any of it
 
 ```bash
@@ -119,15 +135,27 @@ uv run pytest                          # unit
 uv run pytest -m integration           # requires the stack above
 ```
 
-Each row gives its commands in full. **85 unit (84 pass, 1 deliberate `xfail` —
-RAID A06) + 19 integration tests** pass at the commit above, verified against
-the live stack 2026-08-23. Ruff and mypy are clean.
+Each row gives its commands in full. **112 unit + 20 integration tests** pass,
+verified against the live stack **2026-10-06 under
+`openlineage-python`/`openlineage-sql` 1.53.0**, on a stack built from scratch with
+the warehouse loaded by the documented loader. Both integration runs pass all 20
+(RAID I51 was fixed on 2026-10-06). Ruff is clean and mypy is clean on `src`.
+
+**The count changed, and the reason is a result.** The suite was 85 unit with one
+deliberate `xfail` (RAID A06) — the `UPDATE … SET` assignment-subquery case that
+[OpenLineage PR #4767](https://github.com/OpenLineage/OpenLineage/pull/4767)
+fixes. That fix shipped in 1.53.0, so the `xfail(strict=True)` **XPASSed on the
+upgrade**, which is exactly what `tests/unit/test_sql_parse_completeness.py` was
+written to signal. A06's specific refutation is now fixed upstream and **R03 has
+narrowed**. R03 itself stands: two cases in that file still demonstrate silent
+incompleteness — a read inside a function returns no inputs, no outputs and no
+errors, and a read through a view reports only the view.
 
 ---
 
 ## The matrix
 
-### REQ1 — Durability ✅ Met · Evidence A
+### REQ1 — Durability 🟡 Partially met · Evidence A
 
 > Every interaction between an actor and a governed data resource produces a
 > durable record.
@@ -148,6 +176,13 @@ uv run pytest tests/unit/test_lineage.py::test_failure_emits_a_terminal_event_wi
 **Bounded by:** durability of the record beyond emission is the lineage store's
 property, not ours. We show the record exists and retrieves. We show no
 particular retention.
+
+**Unmet part, named.** The requirement says *every* interaction. The server's
+default posture is fail-open (RAID D11): when the lineage store or the collector
+cannot be reached, the tool call still succeeds, and the lost event is counted and
+not recorded. The fail-closed posture (`LINEAGE_FAILURE_MODE=closed`) refuses the
+call instead, and the unit and integration suites test it, so the property holds in
+that mode. It does not hold for every interaction under the default.
 
 ---
 
@@ -178,17 +213,19 @@ REQ5.
 > The record identifies the initiating actor and the authority under which it
 > acted.
 
-**Identity: demonstrated, using a name that does not exist yet.** The caller
+**Parentage: demonstrated, using a name that does not exist yet.** The caller
 supplies its lineage run and job in MCP `_meta`, and the server links them via
 `ParentRunFacet`. `_meta` is `extra: allow`, so arbitrary keys survive, and the
 mechanism is already there. **We use a bespoke reverse-DNS key because no agreed
-key exists, and that is precisely the ask** (RAID D10, Claim 2b).
+key exists, and that is precisely the ask** (RAID D10, the `_meta` parentage ask). The key carries
+a pointer to the caller's run, not an actor. Actor identity is not demonstrated:
+no client sends one, and the event records `lineage.actor` as `absent` (RAID
+I29).
 
 **Authority model: not built.** `REQUIREMENTS.md` § 3a turns on the distinction
 between an agent acting **on behalf of** a human and one acting **autonomously**.
 Nothing in the emitted record carries that distinction. OpenLineage's ownership
-URN vocabulary has no agent type and no authority model (RAID A03, D05, D10
-Claim 2a). This is the single largest unmet part of the implementation.
+URN vocabulary has no agent type and no authority model (RAID A03, D05, D28). This is the single largest unmet part of the implementation.
 
 ```bash
 uv run pytest -m integration tests/integration/test_end_to_end.py::test_the_caller_identity_survives_the_round_trip
@@ -207,22 +244,36 @@ absent one. The gap becomes observable instead of papered over (RAID I29).
 > Actor identity in the record is a pseudonymous reference. Resolution to a
 > person stays in a separate, access-controlled system.
 
-**Built as a design principle.** Nothing in the emitter reads or constructs
-identity. Whatever the caller supplies passes through untouched, and the server
-never resolves, enriches or looks anything up.
+**Built as a design principle, for the identity reference only.** Nothing in the
+emitter reads or constructs identity. Whatever the caller supplies passes through
+untouched, and the server never resolves, enriches or looks anything up.
 
-**Not enforced, and this is an honest gap.** A caller that puts an email address
-in `jobName` will see it emitted to Marquez. No validation exists, no rejection
-exists, and **no test asserts that the server refuses PII**, because no such
-behaviour exists. RAID R02 states the principle and the architecture makes
-compliance easy. It does not make violation impossible.
+**Not enforced, and this is an honest gap.** Three paths carry caller-controlled
+text into the lineage store unredacted. A caller that puts an email address in
+`jobName` will see it emitted to Marquez. The full statement text goes out on every
+event as `job.facets.sql`, and an agent's SQL can carry literal values. On failure
+the database's error text goes out as well, and it can echo those values; it is also
+attached to a metric attribute (RAID I59). No validation, masking or rejection
+exists on any of these paths, and **no test asserts that the server refuses or
+removes PII**, because no such behaviour exists. RAID R02 states the principle and
+the architecture makes compliance easy. It does not make violation impossible.
+
+**What the requirement assumes instead (RAID A29).** That whoever operates the stack
+applies appropriate anonymisation or pseudonymisation in the stores the events land
+in, and treats the lineage store as holding personal data. That is the operator's
+responsibility. This implementation emits the events and does not enforce it. The
+data in the demonstration is synthetic.
+
+**Evidence.** The test below shows only that the identity is read from the caller's
+request and passed through as supplied, which is class C for that one claim. It
+shows nothing about privacy. No test covers any privacy property, which is class D.
 
 ```bash
 uv run pytest tests/unit/test_meta.py::test_reads_identity_from_a_plain_dict
 ```
 
-**To close it** needs a validation policy at the emission boundary. Not built,
-and deliberately not faked for this matrix.
+**To close it** needs a validation or masking policy at the emission boundary. Not
+built, and deliberately not faked for this matrix.
 
 ---
 
@@ -253,9 +304,12 @@ uv run pytest -m integration tests/integration/test_end_to_end.py::test_a_failed
 uv run pytest tests/unit/test_sql_parse_completeness.py
 ```
 
-**A strict xfail captures the parser's own incompleteness**, reproducing a real
-upstream bug against our pinned version, so the suite fails loudly when somebody
-fixes it rather than silently carrying a stale claim (RAID A06).
+**The parser's own incompleteness is pinned by tests that assert today's
+behaviour.** The one case with an upstream fix, a table read only in an `UPDATE`
+assignment subquery, was a strict `xfail` that XPASSed when the pinned client
+moved to 1.53.0, and it is now a regression pin. Two cases still show silent
+incompleteness, so the suite fails loudly when somebody fixes them rather than
+silently carrying a stale claim (RAID A06, R03).
 
 ---
 
@@ -281,7 +335,7 @@ acting process declaring its own behaviour, imperfectly and labelled as such
 
 ---
 
-### REQ7 — Survives the actor ✅ Met · Evidence A
+### REQ7 — Survives the actor 🟡 Partially met · Evidence A
 
 > The record outlives the agent, the session, and the deployment. Ephemeral
 > actors must not produce ephemeral accountability.
@@ -356,7 +410,7 @@ defeats it.
 side: retain the reconciliation over the audit period, alert on the drop counter,
 and assert emitter liveness. None of it needs anything from OpenLineage.
 
-### REQ9 — Fitness at the point of decision 🟡 Partially met · Evidence B
+### REQ9 — Fitness at the point of decision 🟡 Partially met · Evidence C
 
 > Where an AI-produced figure informs a decision, somebody must be able **at that
 > moment** to establish what produced it and whether that derivation was sound.
@@ -370,8 +424,12 @@ reporting cycle, which is the property platform audit lacks. Snowflake's
 sound?" for the person about to act on it. The evidence is available. The
 *fitness judgement* is not built, and the agent itself has no way to ask.
 
+The test below supports only the precondition, that the start event is emitted
+before the statement runs. Nothing tests timing at the point of decision or the
+fitness of a figure, and the *fitness judgement* is not built.
+
 ```bash
-uv run pytest -m integration tests/integration/test_streamable_http.py::test_identity_survives_the_transport
+uv run pytest tests/unit/test_driver.py::test_start_is_emitted_before_execution
 ```
 
 **This is the requirement that separates governance from forensics**, and the
@@ -405,9 +463,94 @@ backend for days, every reference older than a few days dangles by expiry instea
 of by sampling. That is deployment configuration, RAID D15 states it as a
 recommendation, and nothing here tests or enforces it.
 
-**And the facet is bespoke.** No OpenLineage facet carries trace context,
-verified against the specification at `1.52.0-9-g2aae49d8b`. The RFC asking for
-one is filed at [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484).
+**And the facet is bespoke.** No OpenLineage facet carries trace context.
+Re-verified 2026-09-30 against the shipped client at **1.53.0**, the current
+release: no run facet in `openlineage.client.generated` carries a trace or span,
+including in the explicit-lineage module added since 1.52.0. A standard facet is
+our proposed answer to the open question at [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484), not yet posted there.
+
+**This verdict assumes single-interaction run shape**, which is the scoped unit
+of work. The link names the span that initiated *this* run. Where one run spans
+many traces the link is not degraded but ill-defined — *which span?* — and that
+case is out of scope rather than unaddressed — RAID **D22**, and `REQUIREMENTS.md`
+§ 11 states the adverse scenario. Raised at the OpenLineage TSC 2026-09-30.
+
+**What the link does name is provenance**: the span that caused this run to
+exist, singular by construction. Composition — the spans a run consists of — is a
+different fact, 1:N by nature, and one this workstream does not ask for. That is
+also what distinguishes the ask from #4588, which drew a scope objection: a
+provenance pointer is not a work record (RAID A08, R11, A19).
+
+---
+
+### REQ11 — Evidential basis 🟡 Partially met · Evidence A
+
+> The record declares **how it was derived**, so a reader can weigh it. Evidence
+> whose derivation is unstated cannot be weighed.
+
+**Declared: on every event, in a standard facet.** Three tags ride in
+`TagsRunFacet` on every `START`, `COMPLETE` and `FAIL` this server emits. The
+load-bearing one is `lineage.derivation = parsed-intent`, which states the
+position this implementation occupies on the three-point derivation scale
+(RAID D26): parsed from statement text, not read from an engine plan and not
+observed from execution. `lineage.completeness` states what follows from that
+position — `not-guaranteed` as a standing caveat, `parse-failed` where the
+statement could not be read at all and empty inputs therefore mean *we could not
+tell* rather than *it touched nothing*.
+
+```bash
+uv run pytest -m integration tests/integration/test_end_to_end.py::test_the_run_declares_its_datasets_are_intent
+uv run pytest -m integration tests/integration/test_end_to_end.py::test_a_failed_parse_is_readable_off_the_event_in_marquez
+uv run pytest tests/unit/test_sql_parse_completeness.py
+uv run pytest tests/unit/test_tag_vocabulary.py
+```
+
+**The vocabulary is closed for this producer, and that is enforced rather than
+described.** `TAG_VOCABULARY` in `lineage.py` declares the three keys and their
+permitted values; `tests/unit/test_tag_vocabulary.py` asserts both that the
+declaration is exactly what D26 records and that every tag the emitter puts on an
+event is within it, so a fourth value cannot arrive unnoticed by either route.
+The tags stay free-form **on the wire** — the facet is free-form by design and
+OpenLineage is not being asked to define a key vocabulary.
+
+**Closure stops at this producer's own tags, because the facet has other
+writers.** The client adds `openlineage_client_version` to the same
+`TagsRunFacet` on every run event, so the tags this implementation wrote are
+identified by `source = INTEGRATION` rather than by key prefix. **The second
+writer is not a surprise but a defect.** `OPENLINEAGE__TAGS__RUN__*`
+configuration is merged into the facet with `source = USER`, and the client lets a
+same-key `USER` tag replace an integration-supplied one — value *and* source —
+logging at `INFO`. An operator can therefore make an event whose parse failed
+declare the standing caveat instead. Reproduced and pinned at 1.53.0 by the test
+above and recorded as **RAID I46**, with the mitigation left as an open decision
+because it turns on whether operator or producer owns an evidential claim. It is
+R14 one step earlier than R14 states it: the declaration need not even reach the
+wire intact.
+
+**Verified to survive the reference consumer.** Run-level custom facets and the
+tag facet both return intact from Marquez `/api/v1/events/lineage` — checked by
+the REQ10 round-trip test and again directly on 2026-09-30.
+
+**Why it is not met: declared is not interoperable.** The mechanism is a
+free-form tag facet, and **the specification places no obligation on a consumer
+to preserve, return or surface a key it does not recognise** — verified by text
+search of `spec/OpenLineage.md` at 1.53.0, where *consumer*, *ignore*,
+*unknown*, *preserve*, *retain* and *propagate* each appear zero times (RAID
+I45). So a conformant consumer may drop this declaration at ingestion, or store
+it and never show it to anyone. Our own probe demonstrates the first mode in
+another position — Marquez silently discards `parent.run.facets`, HTTP 201, no
+warning (RAID I22) — and Marquez's tracker shows the second for *standard*
+facets (#2351, #1746, #1969).
+
+**And the vocabulary is ours.** `lineage.derivation` and its values are defined
+by this producer, not by the spec, which defines no tag-key vocabulary at all.
+A generic consumer reads them as unrecognised strings. That is a deliberate
+position (D26): the ask to OpenLineage is two Run facets for structure that does
+not exist, and this is something already expressible.
+
+**What would close it.** Not an implementation change. Either a shared
+convention across producers, which needs no spec change, or a first-class
+derivation field, which does — and is not currently requested (RAID R14).
 
 ---
 
@@ -425,7 +568,7 @@ data, *showing what is happening* takes three standards converging:
 | Plane | Standard | Contributes | Answers |
 |---|---|---|---|
 | **Software & infrastructure** | OpenTelemetry | Span per interaction, the decisioning context, the **denominator** | *Did it happen? What surrounded it? What went unrecorded?* |
-| **Protocol** | MCP | Caller identity across the call boundary, via `_meta` | *Who asked?* |
+| **Protocol** | MCP | Lineage parentage across the call boundary, via `_meta` | *Which run asked?* |
 | **Data & information** | OpenLineage | Canonical dataset identity, intent, completeness | *What did it touch?* |
 
 Each is authoritative for its own half and silent on the others. **AI governance
@@ -433,9 +576,10 @@ that rests on any one of them is policy and hope with a dashboard attached.**
 
 ### The three joins, and the test that demonstrates each
 
-**Join 1: protocol identity becomes lineage attribution.** The caller's run and
+**Join 1: protocol parentage becomes lineage attribution.** The caller's run and
 job travel in `_meta` and arrive as `ParentRunFacet` on the lineage event. This
-makes a data interaction attributable to an actor rather than to a connection.
+makes a data interaction attributable to the caller's run rather than to a connection.
+It does not identify the actor (RAID D28).
 
 ```bash
 uv run pytest -m integration tests/integration/test_end_to_end.py::test_the_caller_identity_survives_the_round_trip
@@ -443,7 +587,7 @@ uv run pytest -m integration tests/integration/test_streamable_http.py::test_con
 ```
 
 *Gap it exposes:* no agreed `_meta` key exists. Ours carries a vendor prefix on
-purpose. RAID D10, Claim 2b.
+purpose. RAID D10, the `_meta` parentage ask.
 
 **Join 2: the lineage record and the decisioning context reference each other.**
 The span carries `lineage.run_id`, and the event carries `traceId` and `spanId`.
@@ -457,7 +601,7 @@ uv run pytest tests/unit/test_observability.py::test_the_link_between_the_two_re
 ```
 
 *Gap it exposes:* no OpenLineage facet carries trace context. Ours is bespoke,
-and the RFC in this folder asks for a standard one.
+and a standard one is our proposed answer at OpenLineage #4484, not yet posted.
 
 **Join 3: telemetry supplies the denominator lineage structurally lacks.** A
 lineage store can report only what it received. The span exists whether or not
@@ -475,19 +619,22 @@ standard to do the other's job (R11).
 ### What this means for the three communities
 
 Each of MCP, OpenTelemetry and OpenLineage has, reasonably and independently,
-declined the seam from its own side. OpenTelemetry ruled lineage with context
-propagation out of scope. An OpenLineage maintainer ruled that OpenLineage is not
-a monitoring tool. MCP closed the question as insufficiently mapped to its
-concepts (RAID A08).
+treated the seam as outside its own remit. In opentelemetry-specification#3447 a
+contributor said that if lineage needs its own context propagation, so that it is
+its own top-level signal, it would be out of scope for OpenTelemetry, and pointed
+to Baggage as the base for a separate project. In #4588 an OpenLineage
+contributor said OpenLineage is not a monitoring or observability tool. MCP
+closed the question as insufficiently mapped to its concepts (RAID A08).
 
 Every one of those positions is defensible alone. **Together they leave the
 governance question owned by nobody**, and it is the question a regulator, a CRO
 and a board are all going to ask about autonomous agents.
 
-The convergence needed is small and specific: an agreed `_meta` key, a standard
-trace-context facet, and an authority model that separates an agent acting on
-behalf of a person from one acting alone. Three narrow additions. This suite is
-what they look like when somebody builds them anyway.
+The convergence needed is small and specific: an agreed `_meta` key and a standard
+trace-context facet. Two narrow additions. This suite is what they look like when
+somebody builds them anyway. The authority model, which would separate an agent
+acting on behalf of a person from one acting alone, is a stated gap and not an ask
+(RAID D28).
 
 ### What this suite does *not* cover: the LLM plane
 
@@ -505,8 +652,8 @@ the record** (RAID A09). Those conventions exist, develop alongside the MCP
 conventions in the same repository, and run in production today. The join needs
 no new mechanism either. A trace consists of spans, so the agent's GenAI spans
 and the server's `mcp.execute_sql` span belong to **one trace** and meet without
-anybody inventing anything. We expect the caller identity arriving in `_meta` to
-come from that already-instrumented runtime.
+anybody inventing anything. We expect the parent run id and trace link arriving in `_meta`
+to come from that already-instrumented runtime.
 
 Two caveats travel with the assumption, stated rather than buried. The GenAI
 conventions carry stability **`development`**, so attribute names will move. What
@@ -524,30 +671,34 @@ and names its dependency on the third.**
 
 | Requirement | Verdict | Evidence |
 |---|---|---|
-| REQ1 Durability | ✅ Met | A |
+| REQ1 Durability | 🟡 Partially met — fail-open by default, so not every interaction | A |
 | REQ2 Asset identity | ✅ Met | A |
 | REQ3 Actor identity and authority | 🟡 Partially met — no authority model | A |
 | REQ4 Privacy by construction | 🟡 Partially met — principle, not enforcement | C |
 | REQ5 Derivation | 🟡 Partially met — agent-side unrecorded; server-side is intent | A |
 | REQ6 Declared, not inferred | ✅ Met | C |
-| REQ7 Survives the actor | ✅ Met | A |
+| REQ7 Survives the actor | 🟡 Partially met — outlives the session, not shown to outlive the deployment | A |
 | REQ8 Demonstrable operation | 🟡 Partially met — countable, not yet continuous | A |
-| REQ9 Fitness at the point of decision | 🟡 Partially met — no consumer at decision time | B |
+| REQ9 Fitness at the point of decision | 🟡 Partially met — no consumer at decision time | C |
 | REQ10 Reconstructable context | 🟡 Partially met — link built, retention parity not | A |
+| REQ11 Evidential basis | 🟡 Partially met — declared on every event; no consumer is obliged to preserve or surface it | A |
 
-**Four met, six partially met, none unmet**, all within the structured and SQL
-scope, and one of those verdicts corrected during review (REQ8).
+**Two met, nine partially met, none unmet**, all within the structured and SQL
+scope, and one of those verdicts corrected during review (REQ8). Two more rows, REQ1
+and REQ7, were moved from Met to Partially met on 2026-10-06, after a second review
+applied this matrix's own legend to them.
 
 ### What the gaps have in common
 
 Read down the unmet halves and they sort into three kinds, which is more useful
 than a count.
 
-**Missing a convention, not a mechanism.** REQ3's authority model and REQ10's
-standard trace-context facet. No implementation can close either, because what is
-absent is community agreement. That is the workstream's whole argument, arriving
-from the evidence side rather than the argument side, and it is what the drafts
-in this folder ask for.
+**Missing a convention, not a mechanism.** REQ10's standard trace-context facet.
+No implementation can close it, because what is absent is community agreement, and
+the standard facet is our proposed answer to OpenLineage #4484, not yet posted.
+That is the workstream's whole argument, arriving from the evidence side rather
+than the argument side. REQ3's authority model is a different case: a stated gap,
+not an ask, which closes only if the chain in RAID A28 holds (RAID D28).
 
 **Ours to close, and not yet closed.** REQ4's enforcement, REQ9's decision-time
 consumer, and REQ8's continuity. All three are ordinary engineering, and none needs
@@ -565,6 +716,9 @@ same mistake the argument warns readers about.
 
 - Any platform other than Snowflake, examined (`REQUIREMENTS.md` § 2a).
 - Anything outside structured SQL (§ 11).
+- Any run shape other than a single interaction (§ 11, RAID D22). The trace
+  reference names the span that initiated the run; in a job spanning many traces
+  there is no such span, and the link would be ill-defined rather than weaker.
 - That fail-closed is the correct posture. We demonstrate both and argue for
   neither (RAID D11, R08).
 - That parsed intent equals observed effect. It does not, and every event says

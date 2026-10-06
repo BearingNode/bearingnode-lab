@@ -133,6 +133,8 @@ body {
 .cc-ask p { margin: 0 0 6px; font-size: clamp(12px, 1.05vw, 14px); }
 .cc-ask p:last-child { margin-bottom: 0; }
 .cc-ask__key { display: block; margin: 6px 0; font-size: clamp(11.5px, 1vw, 13.5px); font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+.cc-ask__sub { margin-top: 11px !important; }
+.cc-ask__sub:first-of-type { margin-top: 8px !important; }
 
 /* three outcomes of reading _meta — ABSENT gets the "gap" treatment, MALFORMED is loud, never conflated (RAID I29) */
 .cc-outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
@@ -142,6 +144,31 @@ body {
 .cc-outcome--present .cc-outcome__h { color: var(--azure); }
 .cc-outcome--absent { background: var(--persimmon-wash); border: 1.6px dashed var(--persimmon); color: var(--persimmon-dark); }
 .cc-outcome--malformed { background: var(--navy); color: #fff; }
+
+/* ---------- the run event, before and after: the ask as an object rather than a description ----------
+   RAID I44 fixed the wording of a panel describing two proposed facets. The root cause
+   underneath it: the object being described was never shown, so
+   `run.facets.actor` could be read as a bespoke *name*. A structure cannot be
+   misread that way — it answers the question by existing. White-space is pre-wrap,
+   not pre: a `pre` that scrolls fails `checks.js`'s clipped-text assertion, and a
+   figure with a hidden second half is worse than a wrapped one. */
+.cc-diff { margin-top: 12px; }
+.cc-diff__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.cc-diff__col { border-radius: 6px; padding: clamp(9px, 1.1vw, 13px); border: 1.5px solid var(--rule); background: var(--offwhite); }
+.cc-diff__col--ask { border: 2px solid var(--persimmon); background: var(--persimmon-wash); }
+.cc-diff__h { margin: 0 0 7px; font-size: clamp(11.5px, 1vw, 13.5px); font-weight: 700; color: var(--navy); }
+.cc-diff__col--ask .cc-diff__h { color: var(--persimmon-dark); }
+.cc-diff__code {
+  margin: 0; font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: clamp(9.5px, 0.86vw, 12px); line-height: 1.55; white-space: pre-wrap;
+  overflow-wrap: anywhere; color: var(--ink);
+}
+.cc-diff__code .was { color: var(--muted); }
+.cc-diff__code .new { font-weight: 700; color: var(--persimmon-dark); }
+.cc-diff__code .same { color: var(--muted); }
+@container (max-width: 700px) {
+  .cc-diff__grid { grid-template-columns: 1fr; }
+}
 
 /* ---------- a note that deserves visibility without spending persimmon on ordinary structure ---------- */
 .cc-note { border: 1.5px solid var(--azure); background: #fff; border-radius: 6px; padding: clamp(10px, 1.2vw, 14px); margin-top: 10px; }
@@ -196,6 +223,7 @@ body {
 .cc-event__row:first-child { border-top: 0; }
 .cc-event__row dt { color: var(--muted); font-weight: 700; }
 .cc-event__row dd { margin: 0; overflow-wrap: anywhere; }
+.cc-cite { font-size: 0.86em; color: var(--muted); }
 .cc-tagset { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .cc-tagchip { font-size: clamp(10.5px, 0.92vw, 12.5px); border: 1px solid var(--rule); background: var(--offwhite); border-radius: 5px; padding: 3px 7px; }
 
@@ -289,6 +317,8 @@ body {
 .static .cc-branch__note { font-size: 13px; }
 .static .cc-mode { font-size: 13px; }
 .static .cc-event__row { font-size: 13px; }
+.static .cc-diff__h { font-size: 13px; }
+.static .cc-diff__code { font-size: 11.5px; }
 .static .cc-tagchip { font-size: 13px; }
 .static .cc-path__h { font-size: 15.5px; }
 .static .cc-path p { font-size: 13.5px; }
@@ -305,6 +335,7 @@ body {
   .cc-footnote { font-size: 13px; } .cc-steps li { font-size: 13.5px; } .cc-branch__h { font-size: 13.5px; }
   .cc-branch__note { font-size: 13px; }
   .cc-mode { font-size: 13px; } .cc-event__row { font-size: 13px; } .cc-tagchip { font-size: 13px; }
+  .cc-diff__h { font-size: 13px; } .cc-diff__code { font-size: 11.5px; }
   .cc-path__h { font-size: 15.5px; } .cc-path p { font-size: 13.5px; } .cc-join__body { font-size: 13px; }
   .prov { font-size: 12px; } .foot__meta { font-size: 12px; } .fig { max-width: none; }
 }
@@ -329,8 +360,8 @@ body {
       <p class="cc-stage__path">Test client — <span class="mono">driver/driver.py</span>, or a live agent (OpenWebUI, planned)</p>
       <div class="cc-stage__body">
         <p>The caller is either a live agent or the deterministic test client. It is the
-          <strong>only</strong> source of actor and lineage-parent identity (RAID D01, D10 clause 2b) — the
-          server cannot invent or derive who is asking.</p>
+          <strong>only</strong> source of the lineage-parent reference and of any actor reference (RAID D01, D10) — the
+          server cannot invent or derive which run is asking, or who.</p>
         <p>The agent's own GenAI spans exist and belong to the <strong>same trace</strong> as everything
           below, but nothing in this repository emits them. That is a stated scope boundary, not an
           omission.</p>
@@ -345,7 +376,7 @@ body {
         <span class="cc-stage__num">2</span>
         <span class="cc-stage__role">MCP <span class="mono">tools/call</span>, over Streamable HTTP</span>
       </div>
-      <p class="cc-stage__path"><span class="mono">driver/driver.py</span> lines 22–45 · <span class="mono">mcp_server_ol/.../main.py</span> <span class="mono">install_streamable_http()</span></p>
+      <p class="cc-stage__path"><span class="mono">driver/driver.py</span> · <span class="mono">mcp_server_ol/.../main.py</span> <span class="mono">install_streamable_http()</span></p>
       <div class="cc-stage__body">
         <p><span class="mono">await session.call_tool("execute_sql", {"sql": sql})</span></p>
       </div>
@@ -356,18 +387,18 @@ body {
       </div>
 
       <div class="cc-ask">
-        <p class="cc-ask__h">The ask, part one — bespoke on purpose</p>
-        <p><span class="mono">_meta</span> rides on this message and carries caller identity:</p>
+        <p class="cc-ask__h">MCP has not named this key yet</p>
+        <p><span class="mono">_meta</span> rides on this message and carries lineage parentage, not identity:</p>
         <span class="cc-ask__key mono">io.bearingnode.lineage/parent</span>
-        <p>Reverse-DNS prefixed (<span class="mono">meta.py:43</span>), carrying <span class="mono">parentRunId</span>,
+        <p>Reverse-DNS prefixed (<span class="mono">meta.LINEAGE_META_KEY</span>), carrying <span class="mono">parentRunId</span>,
           <span class="mono">jobNamespace</span>, <span class="mono">jobName</span>, and optionally
           <span class="mono">rootRunId</span>, <span class="mono">rootJobNamespace</span>, <span class="mono">rootJobName</span>.
           MCP declares <span class="mono">_meta</span> <span class="mono">extra: allow</span>, so this key travels today
           against an unmodified SDK — what is missing is agreement on the name.</p>
         <div class="cc-outcomes">
-          <div class="cc-outcome cc-outcome--present"><span class="cc-outcome__h">PRESENT — supplied</span>Caller sent identity; it is used.</div>
-          <div class="cc-outcome cc-outcome--absent"><span class="cc-outcome__h">ABSENT — the gap</span>The normal, quiet, pre-convention state of every MCP client on earth.</div>
-          <div class="cc-outcome cc-outcome--malformed"><span class="cc-outcome__h">MALFORMED — reported loudly</span>Somebody's broken integration, never folded into ABSENT (<span class="mono">meta.py:46–58</span>).</div>
+          <div class="cc-outcome cc-outcome--present"><span class="cc-outcome__h">PRESENT — supplied</span>The caller named its parent run; it is linked.</div>
+          <div class="cc-outcome cc-outcome--absent"><span class="cc-outcome__h">ABSENT — the gap</span>The normal, quiet, pre-convention state.</div>
+          <div class="cc-outcome cc-outcome--malformed"><span class="cc-outcome__h">MALFORMED — reported loudly</span>Somebody's broken integration, never folded into ABSENT (<span class="mono">meta.parent_from_meta</span>).</div>
         </div>
       </div>
     </section>
@@ -436,7 +467,7 @@ body {
         <span class="cc-stage__role">Instrumentation — <span class="mono">LineageSqlDriver</span></span>
         <span class="cc-tag">we instrument here</span>
       </div>
-      <p class="cc-stage__path">subclass of <span class="mono">postgres_mcp.sql.SqlDriver</span> · <span class="mono">mcp_server_ol/src/mcp_server_ol/driver.py</span> lines 115–222</p>
+      <p class="cc-stage__path">subclass of <span class="mono">postgres_mcp.sql.SqlDriver</span> · <span class="mono">mcp_server_ol/src/mcp_server_ol/driver.py</span>, <span class="mono">LineageSqlDriver</span></p>
       <div class="cc-stage__body">
         <p>This is the choke point: <strong>all nine tools funnel through <span class="mono">execute_query</span></strong>,
           which is why one subclass covered the whole server. (Not to be confused with
@@ -445,12 +476,12 @@ body {
       </div>
       <ol class="cc-steps">
         <li><div class="cc-steps__body"><strong>Open the OTel span.</strong> <span class="mono">telemetry.tracer().start_as_current_span(self._job_name)</span>,
-          default job name <span class="mono">mcp.execute_sql</span>, service resource <span class="mono">mcp-server-ol</span> (<span class="mono">telemetry.py:48</span>).</div></li>
+          default job name <span class="mono">mcp.execute_sql</span>, service resource <span class="mono">mcp-server-ol</span> (<span class="mono">telemetry.py</span>).</div></li>
         <li><div class="cc-steps__body"><strong>Parse.</strong> <span class="mono">parse_statement(sql)</span> → <span class="mono">openlineage_sql.parse([sql], dialect="postgres")</span>.
           A parse failure is <strong>not fatal</strong> — the statement still runs and lineage is emitted with no
           datasets, tagged <span class="mono">parse-failed</span>, counted via <span class="mono">telemetry.record_degraded(...)</span>.
           It must not read as "this touched nothing" (RAID I29).</div></li>
-        <li><div class="cc-steps__body"><strong>Resolve caller identity.</strong> <span class="mono">self._parent()</span> → <span class="mono">main._current_parent()</span>
+        <li><div class="cc-steps__body"><strong>Resolve the caller's parent run.</strong> <span class="mono">self._parent()</span> → <span class="mono">main._current_parent()</span>
           → <span class="mono">meta.parent_from_meta(...)</span>. A provider that <em>raises</em> is our own instrumentation
           failing, counted as <span class="mono">Dropped.NO_REQUEST_CONTEXT</span> — never folded into the normal absent case.</div></li>
         <li><div class="cc-steps__body"><strong>Mint the run id.</strong> <span class="mono">emitter.new_run_id()</span> → <span class="mono">uuid4</span>.
@@ -487,15 +518,94 @@ body {
         <span class="cc-stage__role">What the OpenLineage event carries</span>
       </div>
       <p class="cc-stage__path">mcp_server_ol/src/mcp_server_ol/lineage.py</p>
-      <dl class="cc-event">
+
+      <div class="cc-diff">
+        <p class="cc-stage__body" style="margin:0 0 8px;">The same <span class="mono">RunEvent</span>, before and
+          after. <strong>The diff is two lines</strong> — checkable because <span class="mono">job</span>,
+          <span class="mono">inputs</span> and <span class="mono">outputs</span> are shown unchanged beside them.</p>
+
+        <div class="cc-diff__grid">
+          <div class="cc-diff__col">
+            <p class="cc-diff__h">TODAY — fully conformant, and no actor</p>
+<pre class="cc-diff__code">"run": {
+  "runId": "3d9ce90f…",
+  "facets": {
+    "tags": { "tags": [
+      { "key": "lineage.derivation",
+        "value": "parsed-intent" },
+      { "key": "lineage.completeness",
+        "value": "not-guaranteed" },
+      <span class="was">{ "key": "lineage.actor",
+        "value": "absent" }</span>
+    ] },
+    <span class="was">"bearingnode_traceContext": {
+      "traceId": "4bf92f…",
+      "spanId": "00f067…"
+    }</span>
+  }
+},
+<span class="same">"job": {
+  "namespace": "mcp-lineage-demo",
+  "name": "mcp.execute_sql",
+  "facets": { "sql": { … } }
+},
+"inputs":  [ "warehouse.obsinsure.premium" ],
+"outputs": []</span></pre>
+          </div>
+
+          <div class="cc-diff__col cc-diff__col--ask">
+            <p class="cc-diff__h">THE ASK — two added keys</p>
+<pre class="cc-diff__code">"run": {
+  "runId": "3d9ce90f…",
+  "facets": {
+    "tags": { "tags": [
+      { "key": "lineage.derivation",
+        "value": "parsed-intent" },
+      { "key": "lineage.completeness",
+        "value": "not-guaranteed" }
+    ] },
+    <span class="new">"actor":        { … },
+    "traceContext": {
+      "traceId": "4bf92f…",
+      "spanId": "00f067…"
+    }</span>
+  }
+},
+<span class="same">"job": {
+  "namespace": "mcp-lineage-demo",
+  "name": "mcp.execute_sql",
+  "facets": { "sql": { … } }
+},
+"inputs":  [ "warehouse.obsinsure.premium" ],
+"outputs": []</span></pre>
+          </div>
+        </div>
+
+        <div class="cc-ask" style="margin-top:10px;">
+          <p class="cc-ask__h">Why a Run facet, not a Job facet</p>
+          <p><span class="mono">job.facets</span> is declared in advance of execution; <span class="mono">run.facets</span>
+            varies per execution — so the actor, which varies per run, belongs on the Run.</p>
+        </div>
+
+        <div class="cc-footnote" style="margin-top:8px;">
+          <p><strong>1 —</strong> <span class="mono">actor</span> is not shown populated on the left: no actor reference
+            exists to put there (REQ3, RAID D28).</p>
+          <p><strong>2 —</strong> both facet names are illustrative, not proposed spellings — #4484 leaves open
+            <em>how</em> actor identity should be expressed.</p>
+          <p><strong>3 —</strong> <span class="mono">mcp.execute_sql</span> is a value, not a structure (RAID D24);
+            swap in <span class="mono">rest.GET /claims</span> and the object is identical.</p>
+        </div>
+      </div>
+
+      <dl class="cc-event" style="margin-top:14px;">
         <div class="cc-event__row"><dt>RunEvent</dt><dd><span class="mono">eventType = START | COMPLETE | FAIL</span>, built with <span class="mono">openlineage-python</span> — never hand-rolled JSON.</dd></div>
         <div class="cc-event__row"><dt>Job</dt><dd>namespace <span class="mono">mcp-lineage-demo</span> (<span class="mono">OL_JOB_NAMESPACE</span>), name <span class="mono">mcp.execute_sql</span>, with an <span class="mono">SQLJobFacet</span> carrying the query text.</dd></div>
-        <div class="cc-event__row"><dt>Datasets</dt><dd>namespace <span class="mono">postgres://{host}:{port}</span>, name <span class="mono">{database}.{schema}.{table}</span> — e.g. <span class="mono">postgres://postgres:5432</span> / <span class="mono">warehouse.obsinsure.claim</span>. Per the OpenLineage naming specification (<span class="mono">naming.py</span>): a <em>canonical catalog identity</em>, not a transport pointer (RAID A05) — the earlier scaffold got this wrong (I16).</dd></div>
-        <div class="cc-event__row"><dt>ParentRunFacet</dt><dd>present only when the caller supplied identity. <strong>Linkage only</strong> (RAID D10): the caller's identity facets are deliberately not forwarded nested inside it, because the pinned Marquez silently discards them (R07, I22).</dd></div>
+        <div class="cc-event__row"><dt>Datasets</dt><dd>namespace <span class="mono">postgres://{host}:{port}</span>, name <span class="mono">{database}.{schema}.{table}</span> — e.g. <span class="mono">postgres://postgres:5432</span> / <span class="mono">warehouse.obsinsure.claim</span>, a canonical catalog identity per the OpenLineage naming spec, not a transport pointer. <small class="cc-cite">(RAID A05, I16)</small></dd></div>
+        <div class="cc-event__row"><dt>ParentRunFacet</dt><dd>present only when the caller supplied a parent run. Linkage only — the caller's own facets are deliberately not forwarded nested inside it, because the pinned Marquez silently discards them. <small class="cc-cite">(RAID D10, R07, I22)</small></dd></div>
       </dl>
 
       <div class="cc-note">
-        <p class="cc-note__h"><span class="mono">TagsRunFacet</span> — three tags, all standard facets</p>
+        <p class="cc-note__h"><span class="mono">TagsRunFacet</span> — tags in a standard facet, not an ask</p>
         <p>A04 was wrong precisely because it proposed something new without checking what already existed.</p>
         <div class="cc-tagset">
           <span class="cc-tagchip mono">lineage.derivation = parsed-intent</span>
@@ -503,15 +613,7 @@ body {
           <span class="cc-tagchip mono">lineage.actor = supplied | absent | malformed</span>
         </div>
         <p style="margin-top:6px;"><strong>Datasets are parsed intent, not observed effect (RAID D08).</strong> Views, triggers, cascades, partition routing and RLS are invisible to a parser (R03). Emitting intent unlabelled would make this demo an instance of the problem it describes.</p>
-      </div>
-
-      <div class="cc-ask">
-        <p class="cc-ask__h">The ask, part two — bespoke on purpose</p>
-        <span class="cc-ask__key mono">bearingnode_traceContext</span>
-        <p>Run facet carrying <span class="mono">traceId</span> and <span class="mono">spanId</span>.</p>
-        <p>No facet in the OpenLineage spec carries trace context (verified at <span class="mono">1.52.0-9-g2aae49d8b</span>).
-          Styled exactly like the <span class="mono">_meta</span> key in stage 2 — there are exactly two bespoke names in
-          this system, and this pairing is the point.</p>
+        <p style="margin-top:6px;">The producer is not this facet's only writer: the client injects its own tag, and operator configuration can override one of these outright, value and source both (RAID I46).</p>
       </div>
     </section>
 
@@ -576,7 +678,7 @@ body {
   </div>
 
   <p class="prov">
-    Verified 2026-08-06 against the code cited on each stage above:
+    Code references checked by symbol name 2026-10-05 against:
     <span class="mono">mcp-lineage/driver/driver.py</span>,
     <span class="mono">mcp_server_ol/src/mcp_server_ol/{driver,main,meta,lineage,naming,telemetry}.py</span>
     and <span class="mono">README.md</span>. MCP's <span class="mono">_meta</span> mechanism and the GenAI/MCP semantic

@@ -7,12 +7,13 @@ accompany the reference implementation, not part of it.
 
 | File | What it is |
 |---|---|
-| `bearingnode-mcp-lineage-signal-scope.html` / `.png` | What an OTel span carries, what an OpenLineage event carries, what both carry, and what neither does — at field level, with a worked example |
+| `bearingnode-mcp-lineage-signal-scope.html` / `.png` | What an OTel span carries, what an OpenLineage event carries, what both carry, and what neither does — at field level, with a worked example, anchored on the two records shown as objects |
 | `bearingnode-mcp-lineage-framework-entry.html` / `.png` | Where an agent's data access enters the D&I Observability framework, and why the core layer can't be claimed without the foundational one |
-| `bearingnode-mcp-lineage-call-chain.html` / `.png` | The call chain of events from an agent's MCP tool call through to OpenLineage emission, and the two divergent write paths |
+| `bearingnode-mcp-lineage-call-chain.html` / `.png` | The call chain of events from an agent's MCP tool call through to OpenLineage emission, the two divergent write paths, and — as stage 6's climax — the run event before and after the two Run facets this workstream asks OpenLineage for |
 | `BearingNode-AM+DIo11y-joined-mapped.png` | BearingNode's existing Comply/Govern/Manage + D&I Observability diagram, cited from `REQUIREMENTS.md` §10 |
 | `logos/` | Vendored BearingNode, OpenTelemetry and OpenLineage marks — see [`logos/README.md`](logos/README.md) for provenance and trademark terms |
-| `build.py`, `src/` | Build source for the three HTML/PNG figures above |
+| `build.py`, `src/` | Build source for the four published figures above |
+| `bearingnode-mcp-lineage-event-lifecycle.html` / `.png` | The metadata data model (RAID D27), drawn as a bow tie. The left side is event capture, what is captured as the producer's call goes out. The middle is where it lands. The right side mirrors the left: what an auditor, SRE or governance analyst does to recreate the event. It shows the intended design, and marks what is an ask and what is assumed. Source is `src/event-lifecycle.template.html` and `src/event-lifecycle.data.js`, registered in `build.py`'s `BUILDS`. Verified against the code on 2026-10-05, and against `checks.js` at 375, 740, 940 and 1180 px and in static mode |
 
 **Naming.** Every published figure carries the `bearingnode-mcp-lineage-`
 prefix, so it stays attributable once it has left this repository and is

@@ -251,6 +251,28 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
    The rail also collapses: with the panel gone it would reserve 240px for a
    legend alone, and the diagram would be 828px beside a column of white. Single
    column gives it 977px and puts the legend underneath, two-up. */
+/* ---------- the two records, as objects, before the field-level inventory ----------
+   This figure inventories what each signal carries, field by field, and
+   never shows either record as an object. The inventory is the figure's job; the
+   anchor is what the inventory is an inventory *of*. Lighter touch than the
+   call-chain figure, which carries the full before/after as its climax — here the
+   run event anchors the OpenLineage side and the span anchors the comparison. */
+.anchor { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 1.2vw, 14px); margin: 0 0 clamp(14px, 1.8vw, 22px); }
+.anchor__col { border: 1px solid var(--rule); border-radius: 10px; padding: clamp(10px, 1.3vw, 16px); background: var(--offwhite); min-width: 0; }
+.anchor__col--ol { border-left: 4px solid var(--azure); }
+.anchor__col--otel { border-left: 4px solid var(--slate); }
+.anchor__h { margin: 0 0 6px; font-size: clamp(11.5px, 1vw, 13.5px); font-weight: 700; color: var(--navy); }
+.anchor__code {
+  margin: 0; font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: clamp(9.5px, 0.85vw, 12px); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.anchor__code .new { font-weight: 700; color: var(--persimmon-dark); }
+.anchor__code .was { color: var(--muted); }
+.anchor__note { margin: 0 0 clamp(14px, 1.8vw, 22px); font-size: clamp(12px, 1.1vw, 14.5px); max-width: 92ch; }
+.anchor__note strong { color: var(--navy); }
+@container (max-width: 640px) { .anchor { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .anchor { grid-template-columns: 1fr; } }
+
 .static .controls, .static .panel, .static .live-only { display: none; }
 .static .layout { grid-template-columns: minmax(0, 1fr); }
 .static .legend ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px clamp(12px, 2vw, 24px); }
@@ -272,6 +294,9 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
 .static { --pad-y: clamp(60px, 21cqw, 190px); }
 .static h1 { font-size: 29px; }
 .static .sub { font-size: 15.5px; }
+.static .anchor__h { font-size: 13px; }
+.static .anchor__code { font-size: 11.5px; }
+.static .anchor__note { font-size: 14px; }
 .static .frame__cap { font-size: 13px; }
 .static .region__h { font-size: 19px; }
 .static .region__sub { font-size: 12.5px; }
@@ -309,6 +334,43 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
   <p class="sub">One agent tool call against a Postgres warehouse, over MCP. Every attribute and facet name
     below is as defined today<span class="live-only"> — select any of them for its definition and source</span>.</p>
 
+  <div class="anchor">
+    <div class="anchor__col anchor__col--otel">
+      <p class="anchor__h">An OpenTelemetry span, per the conventions — not what this demo emits</p>
+<pre class="anchor__code">"name": "tools/call execute_sql",
+"traceId": "4bf92f…",
+"spanId":  "00f067…",
+"attributes": {
+  "mcp.method.name": "tools/call",
+  "mcp.session.id":  "…"
+}
+database client span: "db.system.name": "postgresql"</pre>
+    </div>
+    <div class="anchor__col anchor__col--ol">
+      <p class="anchor__h">The OpenLineage run event, today — and the two keys we propose</p>
+<pre class="anchor__code">"run": {
+  "runId": "3d9ce90f…",
+  "facets": {
+    "tags": { "tags": [ … ] },
+    <span class="was">"bearingnode_traceContext": { … },</span>
+    <span class="new">"actor":        { … },
+    "traceContext": { … }</span>
+  }
+},
+"inputs": [ "warehouse.obsinsure.premium" ]</pre>
+    </div>
+  </div>
+  <p class="anchor__note">Two records, neither derived from the other. <strong>The span box shows what the MCP and database conventions
+    define for a call like this, not what this demo emits:</strong> the demo's own span carries only
+    <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span>.
+    <strong>Everything below is an inventory of what the two kinds of record can carry</strong>, field by field. The run event's <span class="mono">traceId</span> and
+    <span class="mono">spanId</span> are the only join between them, and they are a <em>link</em> — no event here is
+    ever generated from a span. <strong>The two marked keys are the whole of what we propose to OpenLineage</strong>: who initiated
+    this run, and which span caused it. Facet names illustrative; see the call-chain figure for the full before/after
+    and why both belong on the Run rather than the Job. <span style="color:var(--muted);">Grey</span> — present
+    today, and goes; <span style="color:var(--persimmon-dark);font-weight:700;">persimmon</span> — the two keys
+    we propose.</p>
+
   <div class="controls">
     <span class="ctl-label">Worked example</span>
     <button type="button" data-step="1">1 · read private_party</button>
@@ -344,20 +406,22 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
             <p class="region__brand">__OL_LOGO__</p>
             <p class="region__sub">the RunEvent + facets</p>
             <ul class="items" id="col-ol"></ul>
-            <p class="region__foot">Complete. Never sampled.</p>
+            <p class="region__foot">Not sampled.</p>
           </div>
         </div>
       </div>
 
       <!-- Footnote for the asterisk. Deliberately outside the set geometry: it
            explains an item, it is not a member of the intersection. -->
-      <p class="region__note euler__note">* OTel: <span class="mono">mcp.resource.uri</span>, on
-        <span class="mono">resources/read</span> only. OpenLineage: canonical dataset identity, on every event.</p>
+      <p class="region__note euler__note">* OTel: <span class="mono">mcp.resource.uri</span>, only on requests that carry a
+        resource URI (<span class="mono">resources/read</span>, <span class="mono">resources/subscribe</span>,
+        <span class="mono">resources/unsubscribe</span>, <span class="mono">notifications/resources/updated</span>),
+        so not on <span class="mono">tools/call</span>. OpenLineage: canonical dataset identity, on every event.</p>
 
       <div class="gap">
         <p class="gap__h">Neither — no mechanism exists today</p>
         <ul class="items" id="col-gap"></ul>
-        <p class="gap__rfc">This is the RFC. · OpenLineage #4484 · MCP #2638</p>
+        <p class="gap__rfc">The dataset gap is the one we ask to close. The other two are stated, not asked.</p>
       </div>
     </div>
 
@@ -385,11 +449,16 @@ button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
   </div>
 
   <p class="prov">
-    Verified 2026-07-27 against <span class="mono">open-telemetry/semantic-conventions-genai</span>
-    (<span class="mono">model/mcp</span>, <span class="mono">model/gen-ai</span>),
-    <span class="mono">open-telemetry/semantic-conventions</span> (<span class="mono">model/enduser</span>),
+    Verified 2026-10-06 against <span class="mono">open-telemetry/semantic-conventions-genai</span> at
+    <span class="mono">cb10b70c1</span> (<span class="mono">model/mcp</span>, <span class="mono">model/gen-ai</span>),
+    <span class="mono">open-telemetry/semantic-conventions</span> at <span class="mono">a5324fb05</span>
+    (<span class="mono">model/db</span>, <span class="mono">model/enduser</span>, <span class="mono">model/rpc</span>),
     and the OpenLineage Python client's generated facets. All GenAI and MCP attributes are stability
-    <strong>development</strong> — none are stable, and all may still change.<br>
+    <strong>development</strong> — none are stable, and all may still change.
+    <span class="mono">rpc.response.status_code</span> is the name the MCP conventions still use; core semantic
+    conventions have renamed it <span class="mono">rpc.status_code</span>.
+    <span class="mono">db.system</span> is deprecated in core in favour of <span class="mono">db.system.name</span>,
+    which the span box uses.<br>
     OpenTelemetry and OpenLineage marks are trademarks of the CNCF and the LF AI &amp; Data Foundation
     respectively, reproduced unmodified to identify each project.
   </p>

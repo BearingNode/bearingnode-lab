@@ -20,11 +20,11 @@ This file governs how any agent or contributor works in this repository — read
 
 ## What this repository is
 
-An open engineering lab: reference implementations, specification proposals and
-upstream contributions on observability, lineage and governance across AI,
-software, and data and information. See [`README.md`](README.md) for what the
-lab is and what it does not claim, and [`DISCLOSURE.md`](DISCLOSURE.md) for how
-it is built.
+A source-available engineering lab: reference implementations, specification
+proposals and upstream contributions on observability, lineage and governance
+across AI, software, and data and information. See [`README.md`](README.md)
+for what the lab is and what it does not claim, and
+[`DISCLOSURE.md`](DISCLOSURE.md) for how it is built.
 
 Work here is read by maintainers of the projects we are asking to change
 something. It is held to the standards of those projects.

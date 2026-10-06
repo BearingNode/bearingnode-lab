@@ -50,10 +50,13 @@ JAEGER = "http://localhost:16686"
 SERVICE = "mcp-server-ol"
 SPAN = "mcp.execute_sql"
 
+MCP_URL = "http://localhost:8000/mcp"
+
 # The sibling pointed at a collector that does not exist: every call here is a
 # data interaction whose lineage cannot be recorded.
 UNRECORDABLE_URL = "http://localhost:8001/mcp"
 UNRECORDED_CALLS = 3
+SAMPLING_CALLS = 20
 
 
 def _spans() -> list[dict[str, Any]]:
@@ -73,6 +76,24 @@ def _counts() -> tuple[int, int]:
     total = sum(1 for s in spans if "lineage.run_id" in _tags(s))
     dropped = sum(1 for s in spans if _tags(s).get("lineage.dropped") == "true")
     return total, dropped
+
+
+async def _call_once() -> None:
+    """One ordinary data interaction, so a test need not depend on what ran before it."""
+    async with streamable_http_client(MCP_URL) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            await session.call_tool("execute_sql", {"sql": "SELECT claim_id FROM obsinsure.claim LIMIT 1"})
+
+
+async def _wait_for_spans(deadline: float = 60.0) -> list[dict[str, Any]]:
+    """Spans reach Jaeger after the batch export and the collector's decision window."""
+    spans = _spans()
+    while not spans and deadline > 0:
+        await asyncio.sleep(3)
+        deadline -= 3
+        spans = _spans()
+    return spans
 
 
 async def _call_unrecordable() -> None:
@@ -98,7 +119,8 @@ async def test_every_interaction_leaves_a_span_carrying_its_lineage_run_id() -> 
     A lineage store can only count what it received. The telemetry plane counts
     what was *attempted*, which is the half that makes absence detectable.
     """
-    spans = _spans()
+    await _call_once()  # the test makes its own denominator (RAID I51)
+    spans = await _wait_for_spans()
     assert spans, "no interaction spans found — the stack has not been exercised"
 
     without = [s for s in spans if "lineage.run_id" not in _tags(s)]
@@ -143,10 +165,28 @@ async def test_the_unrecorded_traces_survive_sampling() -> None:
     not itself be sampled away — otherwise the count above is a fraction of the
     truth and reads as though most interactions were fine.
     """
+    _, dropped_before = _counts()
+    for _ in range(SAMPLING_CALLS):
+        await _call_unrecordable()
+
+    # At a 10% sample, keeping all of these by chance is vanishingly unlikely, so
+    # keeping them all is the keep-policy working and not luck.
+    deadline = 90.0
+    dropped_after = dropped_before
+    while deadline > 0:
+        _, dropped_after = _counts()
+        if dropped_after - dropped_before >= SAMPLING_CALLS:
+            break
+        await asyncio.sleep(3)
+        deadline -= 3
+    retained = dropped_after - dropped_before
+    assert retained >= SAMPLING_CALLS, (
+        f"{SAMPLING_CALLS} unrecorded interactions were driven and {retained} dropped-lineage "
+        "traces were retained; the loss signal was sampled away"
+    )
+
     spans = _spans()
     dropped = [s for s in spans if _tags(s).get("lineage.dropped") == "true"]
-
-    assert dropped, "no dropped-lineage traces retained; the loss signal was sampled away"
     for span in dropped:
         assert "lineage.run_id" in _tags(span), (
             "a retained loss trace must still identify the run that should have existed"

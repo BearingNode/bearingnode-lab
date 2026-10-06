@@ -157,7 +157,7 @@ def _counter(name: str, description: str) -> Any:
 
 
 def record_dropped(reason: Dropped, detail: str | None = None) -> None:
-    """Record a lineage event that never reached the collector.
+    """Record a lineage event that was lost, or sent with the caller's identity lost.
 
     **This is the only signal that exists for it.** By D12 the lineage store
     cannot report its own absences, so if this call is missing or unexported,
@@ -165,7 +165,7 @@ def record_dropped(reason: Dropped, detail: str | None = None) -> None:
     """
     _record(
         DROPPED_COUNTER,
-        "Lineage events that never reached the collector",
+        "Lineage events lost, or sent with the caller's identity lost",
         "lineage.dropped",
         reason,
         detail,

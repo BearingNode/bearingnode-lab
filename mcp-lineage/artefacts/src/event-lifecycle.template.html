@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture an event, recreate it on read — BearingNode</title>
+<style>
+/* Roboto, per the BearingNode brand guidelines. Embedded as a data: URI rather
+   than linked, because the Wix HTML element renders in a sandboxed iframe with
+   no allow-same-origin, where an externally-hosted font cannot be fetched.
+   Single variable file, Latin subset, covers 100-900. */
+@font-face {
+  font-family: 'Roboto';
+  src: url(data:font/woff2;base64,__ROBOTO_B64__) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* BearingNode brand guidelines: the same set the other figures declare.
+     Azure is the write path. Medium Slate Blue is the read path, as the
+     OpenTelemetry set is elsewhere. Persimmon marks the gated step. */
+  --navy: #001240;
+  --azure: #1338BE;
+  --cornflower: #668FF2;
+  --persimmon: #F26422;
+  --offwhite: #F5F5F5;
+  --ink: #132C4B;
+  --rule: #D3DAE3;
+  --muted: #5A6678;
+  --slate: #965EF0;
+  --persimmon-wash: #FFF0DF;
+  --persimmon-dark: #9B3F00;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  color: var(--ink); background: #fff; line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+.mono { font-family: ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace; overflow-wrap: anywhere; font-size: 0.94em; }
+
+.fig { width: 100%; max-width: 1180px; margin: 0 auto; padding: clamp(16px, 2.2vw, 32px); container-type: inline-size; }
+
+.fig__title { margin: 0 0 6px; font-size: clamp(20px, 2.5vw, 32px); font-weight: 700; color: var(--navy); line-height: 1.15; }
+.fig__sub { margin: 0 0 clamp(14px, 1.8vw, 22px); font-size: clamp(13px, 1.25vw, 17px); max-width: 92ch; }
+
+/* ---------- the bow tie: capture | stores | recreate, in one grid ---------- */
+.bow {
+  display: grid; align-items: stretch;
+  grid-template-columns: minmax(0, 1.3fr) clamp(26px, 3.4vw, 44px) minmax(0, 1fr) clamp(26px, 3.4vw, 44px) minmax(0, 1.3fr);
+  grid-template-rows: auto auto auto auto auto;
+  row-gap: clamp(8px, 1.1vw, 14px);
+}
+.bow__head {
+  margin: 0; font-size: clamp(10.5px, 0.95vw, 12.5px); font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted); align-self: end;
+}
+.bow__head--l { grid-column: 1; grid-row: 1; color: var(--azure); }
+.bow__head--m { grid-column: 3; grid-row: 1; text-align: center; }
+.bow__head--r { grid-column: 5; grid-row: 1; color: var(--slate); }
+
+.cap { grid-column: 1; grid-row: 2 / span 4; display: flex; flex-direction: column; }
+.persona { grid-column: 5; grid-row: 2; }
+.step--1 { grid-column: 5; grid-row: 3; }
+.step--2 { grid-column: 5; grid-row: 4; }
+.step--3 { grid-column: 5; grid-row: 5; }
+.store--marquez { grid-column: 3; grid-row: 3; }
+.store--jaeger { grid-column: 3; grid-row: 4; }
+.store--identity { grid-column: 3; grid-row: 5; }
+.go--l1 { grid-column: 2; grid-row: 3; }
+.go--l2 { grid-column: 2; grid-row: 4; }
+.go--r1 { grid-column: 4; grid-row: 3; }
+.go--r2 { grid-column: 4; grid-row: 4; }
+.go--r3 { grid-column: 4; grid-row: 5; }
+
+/* ---------- write path: nodes explain, edges carry the data ---------- */
+.node {
+  border: 2px solid var(--azure); border-radius: 8px; background: #fff;
+  padding: clamp(8px, 1vw, 12px) clamp(9px, 1.1vw, 14px); font-size: clamp(11.5px, 1vw, 13.5px);
+}
+.node__h { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--navy); }
+.node__num {
+  flex: 0 0 auto; background: var(--azure); color: #fff; font-weight: 700; border-radius: 4px;
+  padding: 1px 7px; font-size: 0.92em;
+}
+.node p { margin: 3px 0 0; }
+.data {
+  border: 1.5px dashed var(--muted); border-radius: 8px; background: var(--offwhite);
+  padding: clamp(8px, 1vw, 12px) clamp(9px, 1.1vw, 14px); font-size: clamp(11px, 0.95vw, 13px);
+}
+.data__label { display: block; margin-bottom: 5px; font-size: 0.82em; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.data ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.data li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 6px; align-items: start; }
+.data__note { display: block; color: var(--muted); }
+.data__foot { margin: 7px 0 0; font-weight: 700; color: var(--navy); }
+.down { display: flex; flex-direction: column; align-items: center; align-self: center; margin: clamp(3px, 0.6vw, 8px) 0; }
+.down::before { content: ""; order: 1; width: 3px; height: clamp(10px, 1.6vw, 20px); background: var(--azure); }
+.down::after {
+  content: ""; order: 2; width: 0; height: 0;
+  border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 10px solid var(--azure);
+}
+
+.pair {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--navy); color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
+}
+.pair--blank { background: none; }
+.tag {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--rule);
+  font-size: 0.78em; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); background: #fff;
+  vertical-align: 1px;
+}
+.tag--ask { border-color: var(--persimmon); color: var(--persimmon-dark); }
+.tag--assumed { border-style: dashed; border-color: var(--muted); }
+.tag--outside { border-color: var(--persimmon-dark); color: var(--persimmon-dark); }
+
+/* ---------- stores ---------- */
+.store, .read { align-self: start; }
+.store { border: 1.5px solid var(--rule); border-radius: 10px; background: #fff; padding: clamp(8px, 1vw, 12px); }
+.store--identity { border-style: dashed; border-color: var(--persimmon-dark); }
+.store__h { margin: 0 0 4px; font-size: clamp(12px, 1.1vw, 14.5px); font-weight: 700; color: var(--navy); }
+.store--identity .store__h { color: var(--persimmon-dark); }
+.store__node { border: 1px solid var(--rule); border-radius: 6px; background: var(--offwhite); padding: 6px 8px; margin-top: 6px; font-size: clamp(10.5px, 0.92vw, 12.5px); }
+.store__node b { color: var(--navy); }
+
+/* ---------- read path: the same shapes, mirrored, in the read colour ---------- */
+.read {
+  border: 2px solid var(--slate); border-radius: 8px; background: #fff;
+  padding: clamp(8px, 1vw, 12px) clamp(9px, 1.1vw, 14px); font-size: clamp(11.5px, 1vw, 13.5px);
+}
+.read--gated { border-style: dashed; border-color: var(--persimmon); background: var(--persimmon-wash); }
+.read__h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-weight: 700; color: var(--navy); }
+.read__lbl {
+  background: var(--slate); color: #fff; font-weight: 700; border-radius: 4px; padding: 1px 7px; font-size: 0.8em;
+  letter-spacing: 0.4px; text-transform: uppercase;
+}
+.read--gated .read__lbl { background: var(--persimmon-dark); }
+.read p { margin: 4px 0 0; }
+.read .pair { background: var(--slate); }
+.read--gated .pair { background: var(--persimmon-dark); }
+
+/* ---------- horizontal arrows in the gutters, level with their store (CSS, not SVG) ---------- */
+.go { position: relative; align-self: start; margin-top: clamp(18px, 2vw, 26px); height: 3px; }
+.go::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--azure); }
+.go::after {
+  content: ""; position: absolute; top: -4px; width: 0; height: 0;
+  border-top: 5.5px solid transparent; border-bottom: 5.5px solid transparent;
+}
+.go--l1::after, .go--l2::after { right: -2px; border-left: 10px solid var(--azure); }       /* points right, into the store */
+.go--r1::before, .go--r2::before { background: var(--slate); }
+.go--r3::before { background: none; border-top: 3px dashed var(--persimmon); height: 0; }
+.go--r1::after, .go--r2::after { left: -2px; border-right: 10px solid var(--slate); }       /* points left, from the reader to the store */
+.go--r3::after { left: -2px; border-right: 10px solid var(--persimmon); }
+
+/* ---------- closing line, key, provenance, footer ---------- */
+.closing {
+  margin: clamp(14px, 1.8vw, 22px) 0 0; border: 2px solid var(--rule); border-radius: 8px; background: var(--offwhite);
+  padding: clamp(10px, 1.3vw, 16px) clamp(12px, 1.5vw, 20px); font-size: clamp(12px, 1.05vw, 14px);
+}
+.closing strong { color: var(--navy); }
+.key { list-style: none; margin: clamp(10px, 1.4vw, 16px) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: clamp(11px, 0.95vw, 12.5px); color: var(--muted); }
+.key li { display: flex; align-items: center; gap: 7px; }
+.key i { display: inline-block; flex: 0 0 auto; width: 16px; height: 0; border-top: 3px solid var(--azure); }
+.key i.d { height: 11px; border: 1.5px dashed var(--muted); border-radius: 3px; }
+.key i.r { border-top-color: var(--slate); }
+.key i.g { border-top: 3px dashed var(--persimmon); }
+.prov { margin: clamp(16px, 2vw, 24px) 0 0; font-size: clamp(10px, 0.92vw, 12.5px); color: var(--muted); }
+.foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: clamp(10px, 1.5vw, 20px);
+  margin-top: clamp(22px, 2.6vw, 34px); padding-top: clamp(14px, 1.8vw, 22px);
+  border-top: 1px solid var(--rule);
+}
+.foot__logo { flex: 0 0 auto; width: clamp(150px, 17vw, 210px); }
+.foot__logo svg { display: block; width: 100%; height: auto; }
+.foot__meta { text-align: right; font-size: clamp(10px, 0.9vw, 13px); color: var(--muted); }
+.foot__meta span { display: block; }
+
+/* ---------- narrow: one column, in reading order. Gutter arrows are hidden, the
+   numbered badges carry the pairing instead. ---------- */
+@container (max-width: 860px) {
+  .bow { display: flex; flex-direction: column; gap: 10px; }
+  .go { display: none; }
+  .bow__head--l { order: 1; } .cap { order: 2; }
+  .bow__head--m { order: 3; text-align: left; margin-top: 6px; }
+  .store--marquez { order: 4; } .store--jaeger { order: 5; } .store--identity { order: 6; }
+  .bow__head--r { order: 7; margin-top: 6px; }
+  .persona { order: 8; } .step--1 { order: 9; } .step--2 { order: 10; } .step--3 { order: 11; }
+}
+
+/* ---------- static export: fixed px, never clamp()/vw. Re-verified after every change. ----------
+   A GitHub README fits an image to a ~890px column, so a clamp()/vw size shrinks with the
+   viewport and arrives under 10px. Fixed sizes keep every label at 12px or more there. */
+.static .fig__title { font-size: 29px; }
+.static .fig__sub { font-size: 15.5px; }
+.static .bow__head { font-size: 13px; }
+.static .node, .static .read { font-size: 13.5px; }
+.static .data { font-size: 13.5px; }
+.static .data__label { font-size: 1em; }
+.static .store__h { font-size: 15px; }
+.static .store__node { font-size: 13.5px; }
+.static .tag, .static .node__num, .static .read__lbl { font-size: 13px; }
+.static .pair { width: 20px; height: 20px; font-size: 13px; }
+.static .mono { font-size: 1em; }
+.static .closing { font-size: 14px; }
+.static .key { font-size: 13px; }
+.static .prov { font-size: 13px; }
+.static .foot__meta { font-size: 13px; }
+@media print {
+  .fig { max-width: none; }
+  .fig__title { font-size: 29px; } .fig__sub { font-size: 15.5px; } .bow__head { font-size: 13px; }
+  .node, .read, .data, .store__node { font-size: 13.5px; } .data__label { font-size: 1em; } .store__h { font-size: 15px; }
+  .tag, .node__num, .read__lbl { font-size: 13px; } .pair { width: 20px; height: 20px; font-size: 13px; } .mono { font-size: 1em; }
+  .closing { font-size: 14px; } .key, .prov, .foot__meta { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<div class="fig" id="fig">
+
+  <h1 class="fig__title">Capture an event, recreate it on read</h1>
+  <p class="fig__sub">On the left, what is captured as the producer's call goes out. On the right, what an auditor, SRE
+    or governance analyst does to recreate the event from it. Each numbered fact captured on the left has the step
+    that recreates it on the right. Stage numbers match the call-chain figure.</p>
+
+  <div class="bow" id="bow">
+    <p class="bow__head bow__head--l">Capture: the producer's call goes out</p>
+    <p class="bow__head bow__head--m">Where it lands</p>
+    <p class="bow__head bow__head--r">Recreate: the analyst reads it back</p>
+    <div class="cap" id="cap"></div>
+    <div class="go go--l1" aria-hidden="true"></div>
+    <div class="go go--l2" aria-hidden="true"></div>
+    <div class="go go--r1" aria-hidden="true"></div>
+    <div class="go go--r2" aria-hidden="true"></div>
+    <div class="go go--r3" aria-hidden="true"></div>
+  </div>
+
+  <p class="closing" id="closing"></p>
+
+  <ul class="key" aria-label="Key">
+    <li><i></i>a stage: what is happening</li>
+    <li><i class="d"></i>the data that exists at that point, and where it came from</li>
+    <li><i class="r"></i>the read path</li>
+    <li><i class="g"></i>authorised only</li>
+  </ul>
+
+  <p class="prov">
+    Verified 2026-10-05 against the code behind each box:
+    <span class="mono">mcp_server_ol/src/mcp_server_ol/{meta,lineage,driver,telemetry}.py</span>.
+    This shows the intended design. Items marked Ask are proposed and not yet standard, items marked Assumed are relied
+    on but not shown by this implementation, and identity resolution is a separate system outside it.
+    MCP's <span class="mono">_meta</span> mechanism and the <span class="mono">mcp.*</span> and
+    <span class="mono">gen_ai.*</span> conventions carry <strong>development</strong> stability and may still change.
+  </p>
+
+  <footer class="foot">
+    <div class="foot__logo" aria-label="BearingNode">__LOGO_SVG__</div>
+    <div class="foot__meta">
+      <span>Data &amp; Information Observability · mcp-lineage</span>
+      <span>© 2026 BearingNode</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+__DATA__
+
+(function () {
+  "use strict";
+
+  // `code` renders as monospace and **text** as bold. Everything goes through
+  // textContent, so no data string is ever parsed as HTML.
+  function rich(parent, text) {
+    String(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(function (part) {
+      if (!part) return;
+      var n;
+      if (part.charAt(0) === '`') { n = document.createElement('span'); n.className = 'mono'; n.textContent = part.slice(1, -1); }
+      else if (part.slice(0, 2) === '**') { n = document.createElement('strong'); n.textContent = part.slice(2, -2); }
+      else n = document.createTextNode(part);
+      parent.appendChild(n);
+    });
+    return parent;
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) rich(n, text);
+    return n;
+  }
+  function tag(t) { return el('span', 'tag tag--' + t, TAGS[t]); }
+  function badge(pair) {
+    var b = el('span', 'pair' + (pair ? '' : ' pair--blank'), pair || '');
+    if (pair) b.dataset.pair = pair;
+    return b;
+  }
+
+  var bow = document.getElementById('bow');
+
+  // left: capture, a vertical run of stages and the data between them
+  var cap = document.getElementById('cap');
+  CAPTURE.forEach(function (c, i) {
+    if (i) cap.appendChild(el('div', 'down'));
+    if (c.kind === 'node') {
+      var n = el('section', 'node'); n.dataset.stage = c.num;
+      var h = el('div', 'node__h'); h.appendChild(el('span', 'node__num', c.num)); h.appendChild(el('span', '', c.h));
+      n.appendChild(h); n.appendChild(el('p', '', c.body)); cap.appendChild(n);
+    } else {
+      var d = el('div', 'data'); d.appendChild(el('span', 'data__label', c.label));
+      var ul = el('ul');
+      c.lines.forEach(function (l) {
+        var li = el('li'); li.appendChild(badge(l.pair));
+        var box = el('span'); rich(box, l.text); if (l.tag) box.appendChild(tag(l.tag));
+        if (l.note) box.appendChild(el('span', 'data__note', l.note));
+        li.appendChild(box); ul.appendChild(li);
+      });
+      d.appendChild(ul); if (c.foot) d.appendChild(el('p', 'data__foot', c.foot)); cap.appendChild(d);
+    }
+  });
+
+  // middle: the stores
+  STORES.forEach(function (s) {
+    var b = el('section', 'store store--' + s.id);
+    var h = el('p', 'store__h', s.h); if (s.tag) h.appendChild(tag(s.tag)); b.appendChild(h);
+    s.nodes.forEach(function (n) {
+      var nd = el('div', 'store__node'); nd.appendChild(el('b', '', n.h)); nd.appendChild(document.createElement('br')); rich(nd, n.body); b.appendChild(nd);
+    });
+    bow.appendChild(b);
+  });
+
+  // right: the persona, then the steps that recreate each captured fact
+  var p = el('section', 'read persona');
+  var ph = el('div', 'read__h'); ph.appendChild(el('span', 'read__lbl', PERSONA.label)); ph.appendChild(el('span', '', PERSONA.h));
+  p.appendChild(ph); p.appendChild(el('p', '', PERSONA.body)); bow.appendChild(p);
+  RECREATE.forEach(function (r, i) {
+    var s = el('section', 'read step--' + (i + 1) + (r.gated ? ' read--gated' : '')); s.dataset.step = String(i + 1);
+    var h = el('div', 'read__h'); h.appendChild(badge(r.pair)); h.appendChild(el('span', 'read__lbl', r.label)); h.appendChild(el('span', '', r.h));
+    s.appendChild(h);
+    var body = el('p', '', r.body); if (r.tag) body.appendChild(tag(r.tag)); s.appendChild(body);
+    bow.appendChild(s);
+  });
+
+  rich(document.getElementById('closing'), CLOSING);
+
+  // Wix sizes the iframe from outside and cannot read our height across the
+  // sandbox boundary, so report it. postMessage crosses an opaque origin.
+  var last = 0;
+  function reportHeight() {
+    var h = Math.ceil(document.getElementById('fig').getBoundingClientRect().height);
+    if (h === last) return;
+    last = h;
+    try { parent.postMessage({ type: 'bn-figure-height', height: h }, '*'); } catch (e) {}
+  }
+  addEventListener('load', reportHeight);
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.getElementById('fig'));
+  if (document.fonts) document.fonts.ready.then(reportHeight);
+})();
+</script>
+</body>
+</html>
