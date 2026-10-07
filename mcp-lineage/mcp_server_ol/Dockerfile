@@ -12,8 +12,10 @@ COPY src ./src
 
 # --frozen: install exactly what the lock says, and fail if it has drifted.
 # --no-binary is deliberately NOT used, but a source build of openlineage-sql
-# would mean no wheel matched — the failure RAID D09 declined to engage with
-# and R05 tracks. If this step ever starts compiling Rust, stop and read R05.
+# would mean no wheel matched — the failure this workstream chose not to engage
+# with: a Rust toolchain build inside the image. If this step ever starts
+# compiling Rust, stop and check that a published wheel exists for the pinned
+# Python version and architecture.
 RUN uv sync --frozen --no-dev --no-editable
 
 ENV PATH="/app/.venv/bin:$PATH" \

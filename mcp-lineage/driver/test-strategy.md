@@ -66,7 +66,7 @@ in terms that must not be contradicted by anything this driver does:
 
 > **Authority model: not built.** ... Nothing in the emitted record carries
 > that distinction. OpenLineage's ownership URN vocabulary has no agent type
-> and no authority model (RAID A03, D05, D10 Claim 2a). **This is the single
+> and no authority model (RAID A03, D05, D28). **This is the single
 > largest unmet part of the implementation.**
 
 **Span names in this mode must describe an operation, not imply an actor**:
@@ -80,7 +80,7 @@ authority, or intent is exercised, asserted, or implied. If this scenario is
 later extended to say something about REQ3, that is new, separately-scoped
 work — most likely upstream RFC-shaped, since the authority-model gap this
 would need to fill does not currently exist in OpenLineage's vocabulary
-(RAID A03/D05, D10 Claim 2a) — not a driver flag.
+(RAID A03/D05, D28) — not a driver flag.
 
 ## Design (Scenario 2b)
 
@@ -97,7 +97,7 @@ would need to fill does not currently exist in OpenLineage's vocabulary
   above), each opening and closing a plain child span with a few attributes
   and no MCP call involved. Shape borrowed as an *idea only* from
   OpenTelemetry's own demo load generator's weighted dispatcher
-  (`opentelemetry-demo/src/load-generator/script.js:236-253`, RAID A14) —
+  (`opentelemetry-demo/src/load-generator/script.js:236-253`) —
   not copied; that demo has no MCP-relevant code to lift, and no manual
   `traceparent` extraction exists anywhere in that repository either, which
   is the one piece we still have to write ourselves.
@@ -179,4 +179,4 @@ Closing this needs:
   detecting *absence* (a call that never reached the database at all); it
   does not turn on trace composition. Re-check this expectation once
   Scenario 2b actually exists, rather than assuming it holds.
-- **RAID cross-references**: R13, A14, I34.
+- **RAID cross-references**: R13, I34.

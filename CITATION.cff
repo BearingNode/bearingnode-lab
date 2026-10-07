@@ -56,9 +56,9 @@ license-url: https://github.com/BearingNode/bearingnode-lab/blob/main/LICENSE.md
 #
 # KEEP THE QUOTES. Unquoted, YAML reads 2026.07 as a float, and a later 2026.10
 # would silently become 2026.1.
-version: "2026.09"
+version: "2026.10"
 
 # date-released must be the actual date this edition is cut, not the date
 # this file was last drafted. Set it from the same cut recorded in the
 # Editions table in README.md.
-date-released: "2026-09-27"
+date-released: "2026-10-06"

@@ -2,7 +2,7 @@
 
 **This is the load-bearing test of the workstream, not a transport smoke test.**
 
-D10's Claim 2b rests on MCP `_meta` being able to carry a caller's lineage
+D10's `_meta` parentage ask rests on MCP `_meta` being able to carry a caller's lineage
 identity through a real server. That has been demonstrated over SSE — one
 session, one request flow, where nothing can be confused with anything else.
 A real organisational deployment is not that: it is hosted, multi-tenant
@@ -74,7 +74,7 @@ async def test_the_server_serves_streamable_http() -> None:
 
 
 async def test_identity_survives_the_transport() -> None:
-    """Claim 2b over Streamable HTTP rather than the deprecated transport."""
+    """The `_meta` parentage ask over Streamable HTTP rather than the deprecated transport."""
     identity = _identity(f"single-{uuid.uuid4().hex[:6]}")
     await _call_as(identity, "SELECT claim_id FROM obsinsure.claim LIMIT 1")
 
@@ -83,14 +83,14 @@ async def test_identity_survives_the_transport() -> None:
 
 
 async def test_concurrent_callers_are_not_confused_with_each_other() -> None:
-    """**The test that could invalidate Claim 2b's evidence.**
+    """**The test that could invalidate the `_meta` parentage ask evidence.**
 
     Eight distinct callers, each with its own lineage identity and its own
     marker in the SQL, all in flight at once against one session manager. Every
     emitted run must pair *its own* caller's identity with *its own* statement.
 
     A cross-over here would not be a cosmetic bug: it would mean the mechanism
-    the RFC asks the MCP community to standardise does not hold under the
+    the planned MCP refiling will ask the community to standardise does not hold under the
     conditions organisations actually deploy in.
     """
     run_marker = uuid.uuid4().hex[:6]
@@ -131,7 +131,7 @@ async def test_concurrent_callers_are_not_confused_with_each_other() -> None:
     }
     assert not wrong, (
         "caller identity crossed between concurrent requests — "
-        f"Claim 2b's evidence does not hold under Streamable HTTP: {wrong}"
+        f"The `_meta` parentage ask evidence does not hold under Streamable HTTP: {wrong}"
     )
 
 

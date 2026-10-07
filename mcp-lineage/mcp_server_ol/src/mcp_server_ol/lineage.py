@@ -42,6 +42,10 @@ from openlineage.client.facet_v2 import RunFacet, error_message_run, parent_run,
 from mcp_server_ol.naming import PostgresTarget
 from mcp_server_ol.telemetry import current_trace_context
 
+# STAND-IN. This URL is a placeholder. It is the path of the repository this work was
+# developed in, which is not public, so it returns 404 for a reader of the public
+# edition. It is replaced with the public repository path, at a commit, in a later
+# change after the cut (RAID I57).
 PRODUCER = "https://github.com/BearingNode/DIO11y-lab/tree/main/mcp-lineage"
 
 # How the datasets on this event were arrived at. Deliberately a standard
@@ -64,7 +68,32 @@ COMPLETENESS_PARSE_FAILED = "parse-failed"
 # broken integration. An event with no parent cannot distinguish them, so the
 # event carries the reason (RAID I29).
 ACTOR_TAG = "lineage.actor"
+ACTOR_SUPPLIED = "supplied"
 ACTOR_UNKNOWN = "absent"
+ACTOR_MALFORMED = "malformed"
+
+# The vocabulary, closed for this producer. REQ11 is the requirement these three
+# keys serve and RAID D26 defines them. They are closed here, in code, rather
+# than only described in prose.
+#
+# They stay free-form *on the wire*: `TagsRunFacet` is free-form by design,
+# OpenLineage defines no key vocabulary for it, and we are not asking it to —
+# the tags are deliberately not part of the ask (see `README.md` § Impact on the
+# standards and their communities). Closing them here means a fourth value
+# cannot arrive unnoticed: it has to be added to this mapping, which fails
+# `tests/unit/test_tag_vocabulary.py` until the vocabulary is changed
+# deliberately, and the register entry is updated with it.
+#
+# `lineage.derivation` carries one value today and so carries no information.
+# That is the position, not an oversight: D08 and D26 place this implementation
+# at *parsed intent* on a three-point scale, and the other two positions —
+# plan-derived and observed-effect — are both out of reach for Postgres. The
+# single value is what makes the scale's existence legible to a consumer.
+TAG_VOCABULARY: dict[str, frozenset[str]] = {
+    DERIVATION_TAG: frozenset({DERIVATION_PARSED_INTENT}),
+    COMPLETENESS_TAG: frozenset({COMPLETENESS_NOT_GUARANTEED, COMPLETENESS_PARSE_FAILED}),
+    ACTOR_TAG: frozenset({ACTOR_SUPPLIED, ACTOR_UNKNOWN, ACTOR_MALFORMED}),
+}
 
 # RAID D15: the trace that produced this event is part of the control record,
 # not corroboration. Third line starts from the lineage graph — "which agent
@@ -74,25 +103,45 @@ ACTOR_UNKNOWN = "absent"
 # failure lives between the two.
 #
 # **There is no standard facet for this.** Verified against the OpenLineage spec
-# at 1.52.0-9-g2aae49d8b: no facet in `spec/facets/` references `traceId` or
-# `trace_id`. `ExternalQueryRunFacet` carries external *query* identifiers and
-# `ParentRunFacet` carries lineage parentage; neither carries trace context. So
-# this is a bespoke facet under our own vendor prefix, and — exactly like the
-# `_meta` key in `meta.py` — its being bespoke *is* the ask. The ask itself
-# is filed at OpenLineage #4484.
+# at 1.52.0-9-g2aae49d8b, and again at 1.53.0 on 2026-10-06: no facet in
+# `spec/facets/` references `traceId` or `trace_id`. `ExternalQueryRunFacet` carries
+# external *query* identifiers and `ParentRunFacet` carries lineage parentage;
+# neither carries trace context. So this is a bespoke facet under our own vendor
+# prefix, and — exactly like the `_meta` key in `meta.py` — its being bespoke *is* the ask. The ask itself
+# is not yet posted: OpenLineage #4484 asks the open question.
 TRACE_CONTEXT_FACET = "bearingnode_traceContext"
+# STAND-IN. This URL is a placeholder. The schema document it names has not been
+# written, and it does not resolve (RAID I56). The specification requires an
+# immutable, versioned pointer, so the real value is a schema committed to the
+# public repository and referenced at a commit or tag. It is not specified yet.
 TRACE_CONTEXT_SCHEMA = "https://bearingnode.com/schemas/traceContext.json"
 
 
 @attr.define
 class TraceContextRunFacet(RunFacet):
-    """W3C trace context for the trace that produced this run.
+    """W3C trace context naming the span that initiated this run.
 
     **Bespoke, and that is the ask.** No facet in the OpenLineage spec carries
-    trace context — verified against `spec/facets/` at `1.52.0-9-g2aae49d8b`,
-    where nothing references `traceId` or `trace_id`. `ExternalQueryRunFacet`
+    trace context — re-verified 2026-09-30 against the shipped client at
+    `1.53.0`, the current release: no run facet in
+    `openlineage.client.generated` carries a trace or span, including in the
+    explicit-lineage module added since `1.52.0`. `ExternalQueryRunFacet`
     carries external *query* identifiers; `ParentRunFacet` carries lineage
     parentage. Neither is this.
+
+    **This facet carries provenance, not composition — the distinction is the
+    proposal, and conflating them is what invited the cardinality objection.**
+    Two separate facts want a trace reference on a run, and they have different
+    cardinality by nature:
+
+    - **Provenance** — *the span that caused this run to exist.* **Singular by
+      construction**, whatever the surrounding job does. `ParentRunFacet` is the
+      precedent: it names *a* parent, not every ancestor. **This facet is
+      provenance**, and `emit()` implements it by capturing
+      `current_trace_context()` at the point of emission.
+    - **Composition** — *the spans a run consists of.* **1:N by nature.** A
+      long-running job spanning many traces needs this. **This facet does not
+      carry it and should not.**
 
     **This is a correlation reference, not telemetry.** The distinction is
     load-bearing and is the response to the scope objection an OpenLineage
@@ -100,10 +149,20 @@ class TraceContextRunFacet(RunFacet):
     [#4588](https://github.com/OpenLineage/OpenLineage/issues/4588) — that
     OpenLineage is not a monitoring tool. Agreed, and this does not make it one:
     it is a pointer, carrying no metrics, no per-record granularity and no
-    monitoring semantics. One MCP tool call produces one run and one trace, so
-    the 1:1 mapping that #4588 could not offer for streaming holds here exactly.
+    monitoring semantics.
 
-    The ask to standardise this is filed at OpenLineage #4484 (RAID D15).
+    **What distinguishes this ask from #4588 is the kind of claim, not
+    cardinality.** An earlier version of this docstring rested it on 1:1 — one
+    tool call, one run, one trace — which is true in the scoped case and was the
+    wrong thing to lean on: the moment the gap claim generalises beyond MCP it
+    inherits the general case's cardinality. A provenance pointer is not a work
+    record, and that holds however many traces the surrounding job spans.
+    #4588 was reaching for **composition**, which is why it drew a granularity
+    objection; that objection does not reach provenance.
+
+    The ask to standardise this is our proposed answer to the open question at
+    OpenLineage #4484, not yet posted there (RAID D15, D22, A19). Raised at the
+    OpenLineage TSC 2026-09-30 and reframed there.
     """
 
     traceId: str  # noqa: N815 - OpenLineage facet fields are camelCase on the wire

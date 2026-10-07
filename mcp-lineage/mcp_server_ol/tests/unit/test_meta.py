@@ -1,4 +1,4 @@
-"""Reading caller identity out of `_meta` (RAID D10, Claim 2b).
+"""Reading caller identity out of `_meta` (RAID D10, the `_meta` parentage ask).
 
 The absent/malformed split is RAID I29: both once returned a bare `None`, so a
 caller with a broken integration was indistinguishable from the entire installed
@@ -110,3 +110,88 @@ def test_absent_and_malformed_are_distinguishable() -> None:
 
     assert absent.identity is malformed.identity is None
     assert absent.status is not malformed.status
+
+
+@pytest.mark.parametrize(
+    ("run_id", "why"),
+    [
+        ("session-4471", "a session id, which is what the convention invites a caller to reach for"),
+        ("3f1d2c4e-0000-4000-8000", "a truncated UUID"),
+        ("not-a-uuid-at-all", "free text"),
+        ("", "empty string — caught earlier as missing, asserted here so the two agree"),
+    ],
+)
+def test_a_run_id_that_is_not_a_uuid_is_malformed(
+    run_id: str, why: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """RAID I47 — all three fields present is not enough; the run id has to be a UUID.
+
+    `ParentRunFacet` enforces this in code and the specification's prose does not
+    mention it, so this is the mistake a first adopter makes. Graded `PRESENT`, it
+    raised later inside `to_facet()`, which lost the whole event instead of emitting
+    it unparented and counted the loss under the wrong reason.
+    """
+    meta = {LINEAGE_META_KEY: {**FULL, "parentRunId": run_id}}
+
+    with caplog.at_level(logging.WARNING):
+        lookup = parent_from_meta(meta)
+
+    assert lookup.status is ParentStatus.MALFORMED
+    assert lookup.identity is None
+    assert caplog.records, "a non-UUID run id must be logged at WARNING"
+
+
+def test_a_run_id_is_accepted_in_every_form_the_facet_accepts() -> None:
+    """The check must not be stricter than `ParentRunFacet`'s own validator.
+
+    Both call `uuid.UUID()`, so anything the facet would take has to pass here —
+    over-rejecting would turn a working parent into a reported defect.
+    """
+    hex_no_dashes = "3f1d2c4e000040008000000000000001"
+
+    lookup = parent_from_meta({LINEAGE_META_KEY: {**FULL, "parentRunId": hex_no_dashes}})
+
+    assert lookup.status is ParentStatus.PRESENT
+    assert lookup.identity is not None
+    assert lookup.identity.to_facet().run.runId == hex_no_dashes
+
+
+def test_a_bad_root_run_id_is_malformed_only_when_the_root_triple_is_complete() -> None:
+    """`to_facet()` builds `Root` only from a complete triple, so that is the only time format matters.
+
+    Rejecting a stray `rootRunId` that would never be used would refuse a parent that
+    works — the opposite failure to the one I47 records.
+    """
+    complete = {**FULL, "rootRunId": "root-session-9"}
+    assert parent_from_meta({LINEAGE_META_KEY: complete}).status is ParentStatus.MALFORMED
+
+    # Same bad value, but no root job to go with it: `Root` is never constructed.
+    partial = {k: v for k, v in complete.items() if k not in ("rootJobNamespace", "rootJobName")}
+    lookup = parent_from_meta({LINEAGE_META_KEY: partial})
+    assert lookup.status is ParentStatus.PRESENT
+    assert lookup.identity is not None
+    assert lookup.identity.root_run_id == "root-session-9"
+    assert lookup.identity.to_facet().root is None
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        FULL,
+        {k: FULL[k] for k in ("parentRunId", "jobNamespace", "jobName")},
+        {**FULL, "parentRunId": "3f1d2c4e000040008000000000000001"},
+    ],
+)
+def test_a_present_identity_can_always_be_turned_into_a_facet(block: dict[str, str]) -> None:
+    """The invariant behind I47, asserted rather than the symptom.
+
+    `PRESENT` means the server is about to build a `ParentRunFacet` from this. If that
+    construction can raise, the grading is wrong — and because `_safe_emit` catches it,
+    the event is lost with the reason misreported. This is the test that would have
+    caught I47 at the point the bad value arrived.
+    """
+    lookup = parent_from_meta({LINEAGE_META_KEY: block})
+
+    assert lookup.status is ParentStatus.PRESENT
+    assert lookup.identity is not None
+    lookup.identity.to_facet()  # must not raise

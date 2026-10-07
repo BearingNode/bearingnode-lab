@@ -1,7 +1,8 @@
 """OpenLineage dataset naming for Postgres.
 
 The convention is not ours to invent. Per OpenLineage's naming specification
-(`website/docs/spec/naming.md`, read at 1.52.0-9-g2aae49d8b):
+(`website/docs/spec/naming.md`, read at 1.52.0-9-g2aae49d8b and unchanged at 1.53.0,
+checked 2026-10-06):
 
     namespace   postgres://{host}:{port}
     name        {database}.{schema}.{table}

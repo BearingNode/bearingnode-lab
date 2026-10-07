@@ -1,8 +1,10 @@
 # `mcp_server/` — frozen exhibit, not a live component
 
 **This directory is frozen.** It is kept under the **frozen exhibit** exception
-to this lab's own repo-hygiene rule against empty or dead files, per RAID
-`D09` (`public-lab` register). It is not
+to this lab's own repo-hygiene rule against empty or dead files, per `D09` in the
+`public-lab` register, which is not published. That is not `mcp-lineage` RAID
+`D09` (the Windows Rust build decision); `server.py` cites it as "D09/I13,
+mcp-lineage register", and that label is wrong. It is not
 run by `docker-compose.yml` (see the comment above the `mcp-server` service
 there), it is not tested, and it is not to be repaired. Read this file before
 touching anything in this folder.
@@ -74,24 +76,28 @@ exception).
    source names as a non-negotiable, so it is called out
    here rather than left for a reader to find and draw their own conclusion
    about our standards. **It stays, on three grounds.** There is no secret:
-   `postgres:postgres@localhost` is the well-known default loopback DSN for a
-   throwaway container and grants nothing to anyone off the machine running the
-   demo. Its presence is load-bearing for what this exhibit is *for* — clone the
+   `postgres:postgres@localhost` is the well-known default DSN for a
+   throwaway container. That is not the whole position: the compose stack
+   publishes Postgres and the MCP endpoints on all of the host's network
+   interfaces, so on a network others can reach, the superuser login is reachable
+   too (see the main README, *Run it*, and RAID I61; corrected 2026-10-06; the comment
+   at the definition site in `server.py` still says there is no exposure, and is left
+   as written because the file is a frozen exhibit). Its presence is load-bearing for what this exhibit is *for* — clone the
    repository, start the compose stack, and it runs, with no configuration step
    and nothing to obtain; being able to see and run the thing is what makes it an
    exhibit rather than an assertion. And it is overridable by the environment
    variable, so nothing is obliged to use it. Marked in full at the definition
-   site in `server.py`. **Do not "fix" this** — removing the default breaks the
-   clone-and-run property without removing an exposure, because there is none.
-   Confirmed by the principal 2026-07-30.
+   site in `server.py`. **Do not "fix" the default** — removing it breaks the
+   clone-and-run property without closing the exposure, which comes from how the
+   ports are published and not from the default.
+   Confirmed by the maintainer 2026-07-30.
 5. **No failure-path emission.** Neither tool function emits an OpenLineage
    `FAIL` event nor sets OTel span error status when the database call raises
    — the `_emit_ol_event("COMPLETE", ...)` call is simply never reached, and
    the exception propagates with no lineage or trace record of the failure.
    This lab's own testing standard names an untested failure path as
    indistinguishable from event loss, which is the thing this whole workstream
-   argues against. Not currently tracked under a RAID ID; flagged for the
-   register.
+   argues against. 
 6. **`requirements.txt`, not `pyproject.toml` + `uv.lock`.** Predates this
    lab's dependency-management rule. Kept as-is: it is part of what makes this
    exhibit the *pre-standards* state, in contrast with
@@ -113,15 +119,15 @@ applies here**:
   description in `D09` describes the replacement's transitional state, not
   this exhibit.
 - **The import bug was real, and was already fixed before `D09` was written.**
-  The private lab's session record for 2026-07-27 notes that
+  The maintainer's session record for 2026-07-27 notes that
   `psycopg2.sql` was used but never imported, so both tools raised on first
-  call. Commit `bd5777183558e38bc480c8239f30c01ceb0d4e4b` (2026-07-27) added
+  call. A commit on 2026-07-27 added
   the missing `import psycopg2.sql` — two days before `D09` (2026-07-29) cited
   the bug as a reason a CI run against this file would go red. Confirmed
   2026-07-30: the file's imports resolve and `ruff check` on it passes clean.
 
-Both corrections are written up for the register rather than silently folded
-into `D09`'s text; the full note is kept in the private working register — ask the relevant maintainer for it.
+Both corrections are recorded in the maintainer's working notes rather than
+silently folded into `D09`'s text; ask the maintainer for the full note.
 
 ## Not repaired
 

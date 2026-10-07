@@ -11,8 +11,8 @@ that cannot live in a text file:
   renders in a sandboxed iframe with no `allow-same-origin`, where a fetch for an
   externally-hosted font fails. A `data:` URI needs no fetch and no origin.
 * **The logo.** The official BearingNode asset, vendored into `logos/` so the
-  build has no dependency on the private `branding` submodule (RAID I05,
-  `public-lab` register). Its paths are styled by a CSS class in a
+  build has no dependency on the private `branding` submodule (see the
+  vendoring note in `logos/README.md`). Its paths are styled by a CSS class in a
   `<defs><style>` block; inlined into another document that class leaks and
   non-browser renderers drop it, so the fill is promoted onto each path.
   Geometry untouched.
@@ -34,6 +34,7 @@ BUILDS = [
     ("src/framework-entry.template.html", "bearingnode-mcp-lineage-framework-entry.html", None),
     ("src/signal-scope.template.html", "bearingnode-mcp-lineage-signal-scope.html", "src/signal-scope.data.js"),
     ("src/call-chain.template.html", "bearingnode-mcp-lineage-call-chain.html", None),
+    ("src/event-lifecycle.template.html", "bearingnode-mcp-lineage-event-lifecycle.html", "src/event-lifecycle.data.js"),
 ]
 
 

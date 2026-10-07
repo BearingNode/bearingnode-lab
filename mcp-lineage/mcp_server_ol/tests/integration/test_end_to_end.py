@@ -116,20 +116,30 @@ async def test_the_run_declares_its_datasets_are_intent(called_with_identity) ->
 
 
 async def test_a_call_without_identity_records_the_actor_as_unknown() -> None:
-    """The gap itself, observable: no `_meta`, no parent, no invented actor."""
+    """The gap itself, observable: no `_meta`, no parent, no invented actor.
+
+    Reads back the events of *this* call, found by a marker in its SQL. An earlier
+    version asserted only that some run in the namespace had no parent, which any
+    other call satisfied whether or not this one emitted anything.
+    """
+    marker = f"no_identity_probe_{uuid.uuid4().hex[:8]}"
     async with streamable_http_client(MCP_URL) as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(
-                "execute_sql", {"sql": "SELECT contract_id FROM obsinsure.contract LIMIT 1"}
+                "execute_sql", {"sql": f"SELECT contract_id AS {marker} FROM obsinsure.contract LIMIT 1"}
             )
     assert not result.isError, result.content
 
-    jobs = marquez(f"/api/v1/namespaces/{NAMESPACE}/jobs?limit=100")["jobs"]
-    runs_without_parent = [
-        j for j in jobs if "parent" not in ((j.get("latestRun") or {}).get("facets") or {})
-    ]
-    assert runs_without_parent, "expected at least one run with no parent identity"
+    events = marquez("/api/v1/events/lineage?limit=200")["events"]
+    mine = [e for e in events if marker in e.get("job", {}).get("facets", {}).get("sql", {}).get("query", "")]
+    assert mine, f"no stored event found whose SQL carries {marker!r}"
+    for event in mine:
+        # Marquez stores an absent facet as an explicit null, so test the value, not the key.
+        assert not (event.get("run", {}).get("facets") or {}).get("parent"), (
+            "a call with no identity must carry no parent"
+        )
+    assert _tags_for_sql(marker)[ACTOR_TAG] == ParentStatus.ABSENT
 
 
 # -- RAID I29 / D12: degradation must be readable off the event ---------------
@@ -226,6 +236,32 @@ async def test_malformed_identity_is_distinguishable_from_absent_in_marquez() ->
     result = await _call(
         f"SELECT claim_id AS {marker} FROM obsinsure.claim LIMIT 1",
         meta={LINEAGE_META_KEY: {"parentRunId": "supplied-but-incomplete"}},
+    )
+    assert not result.isError, result.content
+
+    tags = _tags_for_sql(marker)
+    assert tags[ACTOR_TAG] == ParentStatus.MALFORMED
+
+
+async def test_a_complete_identity_with_a_non_uuid_run_id_is_malformed_and_the_event_survives() -> None:
+    """RAID I47 — the same failure as I29, one layer down, verified over the wire.
+
+    All three required fields are present, so nothing about the shape is
+    incomplete; only the run id is not a UUID — what a session string looks
+    like. Before the fix this was graded `supplied`, `to_facet()` raised after
+    the fact, and the event was lost entirely. The assertion that matters is
+    that the event *reached Marquez*: reading the tag back at all proves it.
+    """
+    marker = f"bad_run_id_probe_{uuid.uuid4().hex[:8]}"
+    result = await _call(
+        f"SELECT claim_id AS {marker} FROM obsinsure.claim LIMIT 1",
+        meta={
+            LINEAGE_META_KEY: {
+                "parentRunId": "session-not-a-uuid",
+                "jobNamespace": NAMESPACE,
+                "jobName": "agent-session-i47",
+            }
+        },
     )
     assert not result.isError, result.content
 

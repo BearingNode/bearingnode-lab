@@ -1,102 +1,119 @@
 /**
- * Content for the signal-scope figure, extracted verbatim from the 2026-07-27
- * build. Every entry's meta is transcribed from the source file named in `src`,
- * and was verified against those files on that date — so this data is edited
- * only against primary sources, never from memory.
+ * Content for the signal-scope figure. Each item's meta is transcribed from
+ * the source named in its `src` and is edited only against primary sources,
+ * never from memory.
  *
- * `col` places an item in one of the four regions: otel | both | ol | gap.
- * The desktop Euler geometry and the stacked mobile view are both rendered from
- * this one array, so they cannot diverge.
+ * `sets` is the classification: which of the three standards carry the item,
+ * any non-empty subset of ["mcp", "otel", "ol"]. An empty array means carried
+ * by none of the three, the gap, and the item is filed in `col: "gap"`.
+ *
+ * MCP is a set in its own right, not folded into OTel as a sub-label. An item
+ * belongs to "otel" only if an OTel *span* carries it. It belongs to "mcp" if
+ * it travels over MCP or is defined by an MCP convention. No item sits in
+ * "mcp" alone. That is a fact about this inventory, not a claim that nothing
+ * MCP carries lands on neither a span nor a facet.
+ *
+ * `col` is the placement the current two-set template reads: otel | both | ol
+ * | gap. It is derived from `sets` by collapsing MCP into the span it travels
+ * with, and it is a compatibility field only. An item with no `col` is not
+ * placed by that template. `parentkey` has none: it sits in MCP and OpenLineage
+ * but not on a span, so no two-set region can show it without misstating it.
+ * Rebuild the published figure only after the template reads `sets`.
  */
 export const ITEMS = [
-    { id: "method",   col: "otel", mono: true,  label: "mcp.method.name",
+    { id: "method",   sets: ["mcp", "otel"], col: "otel", mono: true,  label: "mcp.method.name",
       set: "OpenTelemetry span · MCP convention", req: "Required", stability: "development",
       src: "model/mcp/registry.yaml",
       body: "The name of the request or notification method. An enum — members include tools/call, resources/read, tools/list, prompts/get, sampling/createMessage." },
-    { id: "session",  col: "otel", mono: true,  label: "mcp.session.id",
+    { id: "session",  sets: ["mcp", "otel"], col: "otel", mono: true,  label: "mcp.session.id",
       set: "OpenTelemetry span · MCP convention", req: "Recommended", stability: "development",
       src: "model/mcp/registry.yaml",
-      body: "Identifies the MCP session. The closest thing MCP has to a durable, job-shaped anchor — worth considering as the OpenLineage run or parent-run anchor, since it is already emitted." },
-    { id: "protocol", col: "otel", mono: true,  label: "mcp.protocol.version",
+      body: "Identifies the MCP session. The server assigns it, so it is absent in stateless mode and on stdio, it is not guaranteed to be a UUID, and it ends with the connection. It is emitted on the span when present, but that does not make it a durable anchor for an OpenLineage run or parent run: a record that has to outlive the session cannot depend on it." },
+    { id: "protocol", sets: ["mcp", "otel"], col: "otel", mono: true,  label: "mcp.protocol.version",
       set: "OpenTelemetry span · MCP convention", req: "Recommended", stability: "development",
       src: "model/mcp/registry.yaml",
-      body: "The version of the Model Context Protocol in use, e.g. 2025-06-18. Matters here because pre- and post-stateless-rewrite deployments propagate identity differently." },
-    { id: "rpc",      col: "otel", mono: true,  label: "rpc.response.status_code",
+      body: "The version of the Model Context Protocol in use, e.g. 2025-06-18. The 2026-07-28 revision removes protocol-level sessions and the initialize handshake. None of these versions carries a caller identity." },
+    { id: "rpc",      sets: ["mcp", "otel"], col: "otel", mono: true,  label: "rpc.response.status_code",
       set: "OpenTelemetry span · MCP convention", req: "Conditionally required", stability: "development",
       src: "model/mcp/common.yaml",
-      body: "Set if the response carries an error code. Alongside error.type, which should be the string representation of the JSON-RPC error code." },
-    { id: "args",     col: "otel", mono: true,  label: "gen_ai.tool.call.arguments",
+      body: "Set if the response carries an error code. Alongside error.type, which should be the string representation of the JSON-RPC error code. Core semantic conventions have since renamed this attribute rpc.status_code; the MCP conventions still reference the old name (checked 2026-10-06)." },
+    { id: "args",     sets: ["otel"], col: "otel", mono: true,  label: "gen_ai.tool.call.arguments",
       set: "OpenTelemetry span · GenAI convention", req: "Opt-in", stability: "development",
       src: "model/gen-ai/registry.yaml",
-      body: "Parameters passed to the tool call. Opt-in because it is a payload — in this scenario it is where limit: 5000 appears, which is the only trace of the read being truncated." },
-    { id: "duration", col: "otel", mono: false, label: "duration + causal span tree",
+      body: "Parameters passed to the tool call. Opt-in because it is a payload — in this scenario it is where limit: 5000 appears, which is the only trace of the read being truncated. A GenAI convention, not MCP's own — the distinction most items here collapse, this one doesn't." },
+    { id: "duration", sets: ["otel"], col: "otel", mono: false, label: "duration + causal span tree",
       set: "OpenTelemetry span · intrinsic", req: "Intrinsic to the span model", stability: "stable",
       src: "OTel trace data model",
-      body: "How long it took and what called what. This is what tracing is for, and OpenLineage has no equivalent — nor should it." },
+      body: "How long it took and what called what. This is what tracing is for, and OpenLineage has no equivalent — nor should it. Nothing MCP-specific about it either: every span gets this, MCP ones included." },
 
-    { id: "join",     col: "both", mono: false, label: "trace_id + span_id — the join key",
-      set: "Carried by both", req: "The correlation, not a derivation", stability: "—",
-      src: "W3C Trace Context · custom OL run facet",
-      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. A lineage event may carry those IDs so a reader can pivot between the two stores. It is a link. No OpenLineage event in this design is ever generated from a span." },
-    { id: "resource", col: "both", mono: false, label: "the data resource touched *",
-      set: "Carried by both — but not the same identifier", req: "Conditionally required (OTel)", stability: "development",
+    { id: "parentkey", sets: ["mcp", "ol"], mono: true, label: "io.bearingnode.lineage/parent",
+      set: "MCP _meta key · lands on an OpenLineage ParentRunFacet", req: "Not yet specified", stability: "—",
+      src: "mcp_server_ol/src/mcp_server_ol/meta.py · lineage.py (ParentIdentity.to_facet)",
+      body: "Rides on the MCP request itself, in params._meta — not on a span. MCP's extra: allow on _meta means this key travels today against an unmodified SDK; what is missing is an agreed name. It carries parentRunId, jobNamespace and jobName, and optionally a root triple. The reference implementation reads those out of _meta and builds a real OpenLineage ParentRunFacet from them: run: { runId } and job: { namespace, name }, plain fields with no nested facets, so it survives Marquez ingestion intact. That is a working MCP-to-OpenLineage pass-through with no OpenTelemetry involved. A span-level sampler has no purchase on it either way — it never rides on a span, so a 10% tail sample removes none of it. See the call-chain figure, stage 2, for the full _meta argument." },
+
+    { id: "join",     sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "trace_id + span_id — the join key",
+      set: "Carried by all three", req: "The correlation, not a derivation", stability: "—",
+      src: "model/mcp/registry.yaml · W3C Trace Context · custom OL run facet",
+      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. That is why this travels at all, not an incidental fact about OTel and OpenLineage alone. A lineage event may carry those IDs so a reader can pivot between the two stores. It is a link. No OpenLineage event in this design is ever generated from a span. The OpenLineage half is a custom run facet because the spec has none — re-verified against the shipped client at 1.53.0 — and standardising it is one of the two Run facets this workstream proposes. What it names is the span that caused the run to exist, not the spans a run consists of." },
+    { id: "resource", sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "the data resource touched *",
+      set: "Carried by all three — but not the same identifier", req: "Conditionally required (OTel)", stability: "development",
       src: "model/mcp/registry.yaml",
-      body: "OTel's mcp.resource.uri is a transport pointer — it need only be meaningful to the server about to dereference it. Its own example is postgres://database/customers/schema. OpenLineage's namespace + name is a catalog identity that must be canonical to join a graph. Neither derives from the other without a naming authority — which is the real reason lineage cannot be reconstructed from spans." },
-    { id: "rw",       col: "both", mono: false, label: "read / write intent",
-      set: "Carried by both", req: "—", stability: "—",
+      body: "OTel's mcp.resource.uri is an MCP attribute, not a generic OTel one — without MCP naming it, the span side of this correlation does not exist. It is also only a transport pointer, meaningful to the server about to dereference it; its own example is postgres://database/customers/schema. OpenLineage's namespace + name is a catalog identity that must be canonical to join a graph. Neither derives from the other without a naming authority — which is the real reason lineage cannot be reconstructed from spans." },
+    { id: "rw",       sets: ["otel", "ol"], col: "both", mono: false, label: "read / write intent",
+      set: "Carried by both — generic, not MCP-specific", req: "—", stability: "—",
       src: "—",
-      body: "OTel infers it from the method and the DB span; OpenLineage states it structurally, as inputs versus outputs." },
-    { id: "fail",     col: "both", mono: false, label: "success or failure",
-      set: "Carried by both", req: "Conditionally required (OTel)", stability: "development",
+      body: "OTel infers it from the method and the DB span; OpenLineage states it structurally, as inputs versus outputs. Nothing in either convention names this as MCP's contribution — it falls out of instrumenting a database call, MCP or not." },
+    { id: "fail",     sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "success or failure",
+      set: "Carried by all three", req: "Conditionally required (OTel)", stability: "development",
       src: "model/mcp/common.yaml · ErrorMessageRunFacet",
-      body: "error.type on the span; RunState.FAIL plus an errorMessage run facet on the lineage side. A run that starts and never terminates is indistinguishable from a dropped event — which is precisely the confusion this figure exists to prevent." },
-    { id: "time",     col: "both", mono: false, label: "when, and how long",
-      set: "Carried by both", req: "—", stability: "—",
+      body: "error.type is defined in MCP's own common attribute set, same file rpc.response.status_code comes from — so the OTel-side half of this is MCP's, not generic span instrumentation. RunState.FAIL plus an errorMessage run facet carries it on the lineage side. A run that starts and never terminates is indistinguishable from a dropped event — which is precisely the confusion this figure exists to prevent." },
+    { id: "time",     sets: ["otel", "ol"], col: "both", mono: false, label: "when, and how long",
+      set: "Carried by both — generic, not MCP-specific", req: "—", stability: "—",
       src: "—",
-      body: "Both timestamp the interaction. Only the span meaningfully measures it." },
-    { id: "who",      col: "both", mono: false, label: "caller pseudo-id — app convention",
-      set: "Possible on both — required by neither", req: "Not in the MCP attribute set", stability: "development",
+      body: "Both timestamp the interaction. Only the span meaningfully measures it. Not an MCP convention — every span and every run event carries this regardless of what protocol sits behind it." },
+    { id: "who",      sets: ["otel", "ol"], col: "both", mono: false, label: "caller pseudo-id — possible, not carried by this demo",
+      set: "Possible on both — required by neither, not MCP's own attribute, and not carried by this demo", req: "Not in the MCP attribute set", stability: "development",
       src: "model/enduser/registry.yaml",
-      body: "enduser.pseudo.id exists in core OTel: a pseudonymous identifier not directly linked to the end user's actual identity. It can reach the server through baggage in params._meta. But it is absent from mcp.common.attributes, so a fully conformant MCP instrumentation carries no caller identity at all — any that is present is an application convention a lineage consumer cannot rely on. On the OpenLineage side, TagsRunFacet could carry the same pseudonymous reference today, using an existing facet rather than a new one." },
+      body: "enduser.pseudo.id exists in core OTel: a pseudonymous identifier not directly linked to the end user's actual identity. The specification routes it to the server through baggage in params._meta — MCP acting as a transport, not defining the field. That route is the specification's claim, not a demonstrated one: nothing in the reference implementation reads baggage, and it does not carry enduser.pseudo.id on its span or its event. The attribute is absent from mcp.common.attributes, so a fully conformant MCP instrumentation carries no caller identity at all; any that is present is an application convention a lineage consumer cannot rely on. On the OpenLineage side, TagsRunFacet could carry the same pseudonymous reference today, using an existing facet rather than a new one." },
 
-    { id: "dsid",     col: "ol", mono: false, label: "dataset: namespace + name",
+    { id: "dsid",     sets: ["ol"], col: "ol", mono: false, label: "dataset: namespace + name",
       set: "OpenLineage event", req: "Core to the event", stability: "stable",
       src: "openlineage/client/generated/base.py",
       body: "Canonical dataset identity. OpenLineage has a dataset naming specification precisely because these identifiers must be comparable across producers and across time to form a graph." },
-    { id: "schema",   col: "ol", mono: true,  label: "SchemaDatasetFacet",
+    { id: "schema",   sets: ["ol"], col: "ol", mono: true,  label: "SchemaDatasetFacet",
       set: "OpenLineage event · dataset facet", req: "Optional facet", stability: "stable",
       src: "openlineage/client/generated/schema_dataset.py",
       body: "The fields of the dataset. No OTel span carries the shape of what was read." },
-    { id: "collin",   col: "ol", mono: true,  label: "ColumnLineageDatasetFacet",
+    { id: "collin",   sets: ["ol"], col: "ol", mono: true,  label: "ColumnLineageDatasetFacet",
       sub: "↳ Transformation · DIRECT / INDIRECT",
       set: "OpenLineage event · dataset facet", req: "Optional facet", stability: "stable (1-2-0)",
       src: "openlineage/client/generated/column_lineage_dataset.py",
       body: "Maps each output field to the input fields used to evaluate it. Each InputField carries Transformation entries: type DIRECT or INDIRECT, a subtype, a description, and a masking flag. The facet's dataset property is documented for lineage affecting the whole dataset — filtering, sorting, grouping (aggregates), joining, window functions. That is a purpose-built slot for exactly the join-and-group-by in this scenario. OpenLineage can express the transform perfectly. Nothing in this architecture can observe it." },
-    { id: "owner",    col: "ol", mono: true,  label: "OwnershipJobFacet",
+    { id: "owner",    sets: ["ol"], col: "ol", mono: true,  label: "OwnershipJobFacet",
       set: "OpenLineage event · job facet", req: "Optional facet", stability: "stable",
       src: "openlineage/client/generated/ownership_job.py",
-      body: "Job-level ownership, in OpenLineage since 2022 and populated from Airflow's owner field. It attaches to a job — which is why it does not solve the ad hoc case: there is no durable job to attach it to." },
-    { id: "tags",     col: "ol", mono: true,  label: "TagsRunFacet",
+      body: "Job-level ownership, in OpenLineage since 2022 and populated from Airflow's owner field. It attaches to a job, so it fits work declared in advance. It does not solve the ad hoc case, where no job is declared in advance for it to attach to. A caller with a declared job is already served." },
+    { id: "tags",     sets: ["ol"], col: "ol", mono: true,  label: "TagsRunFacet",
       set: "OpenLineage event · run facet", req: "Optional facet", stability: "development",
       src: "openlineage/client/generated/tags_run.py",
       body: "Run-level tags, with active work syncing tag and ownership config across the Python and Java clients. The most conservative candidate carrier for a pseudonymous actor reference: an existing facet, no new spec surface, and pseudonymous by construction." },
-    { id: "graph",    col: "ol", mono: false, label: "the graph, across time",
+    { id: "graph",    sets: ["ol"], col: "ol", mono: false, label: "the graph, across time",
       set: "OpenLineage event · emergent", req: "—", stability: "—",
       src: "—",
       body: "The accumulated result. Worthless if incomplete: dropping 90% of spans costs you resolution, dropping 90% of lineage events costs you correctness. That asymmetry of consequence is why one signal may be sampled and the other may not." },
 
-    { id: "g-transform", col: "gap", mono: false,
+    { id: "g-transform", sets: [], col: "gap", mono: false,
       label: "The transform the agent performed after the rows left the server — AVG over the returned rows. No span. No facet. No observer.",
-      set: "Neither", req: "No mechanism exists", stability: "—", src: "—",
-      body: "The MCP server has ground truth for the reads — it ran the SELECTs — and no idea the agent then averaged anything. The caller knows it computed an average but cannot assert dataset identity. The transform falls in the hole between them: outside both parties' ground truth, not missing through a defect. This lands on the RFC's first assumption — lineage must be declared by the entity enacting it. Only the agent can declare this one." },
-    { id: "g-dataset", col: "gap", mono: false,
-      label: "Which dataset a tools/call touched — mcp.resource.uri is scoped to resources/read, which takes a URI parameter. A tool call does not.",
-      set: "Neither", req: "No mechanism exists", stability: "—", src: "model/mcp/registry.yaml",
-      body: "mcp.resource.uri is conditionally required only when the client executes a request type that includes a resource URI parameter — documented as resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter. This is the narrow, closeable gap: a concrete proposal to open-telemetry/semantic-conventions-genai. Claiming OTel cannot identify an MCP data resource at all would be wrong, and would be corrected in review." },
-    { id: "g-authority", col: "gap", mono: false,
+      set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "—",
+      body: "The MCP server has ground truth for the reads — it ran the SELECTs — and no idea the agent then averaged anything. The caller knows it computed an average but cannot assert dataset identity. The transform falls in the hole between them: outside all three standards' ground truth, not missing through a defect. This lands on the RFC's first assumption — lineage must be declared by the entity enacting it. Only the agent can declare this one." },
+    { id: "g-dataset", sets: [], col: "gap", mono: false,
+      label: "Which dataset a tools/call touched — mcp.resource.uri is defined only for requests that carry a resource URI (resources/read and three others). A tool call carries none.",
+      set: "Carried by none of the three — and this one is MCP's own gap", req: "No mechanism exists", stability: "—", src: "model/mcp/registry.yaml",
+      body: "mcp.resource.uri is conditionally required only when the client executes a request type that includes a resource URI parameter — documented as resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter. Unlike the other two gaps here, this one is MCP's own limitation, not OTel's or OpenLineage's: MCP itself has not named a resource for the call that most needs one. This is the narrow, closeable gap: a concrete proposal to open-telemetry/semantic-conventions-genai. Claiming OTel cannot identify an MCP data resource at all would be wrong, and would be corrected in review." },
+    { id: "g-authority", sets: [], col: "gap", mono: false,
       label: "The authority the agent acted under — autonomously, or on behalf of a named user.",
-      set: "Neither", req: "No mechanism exists", stability: "—", src: "model/gen-ai/registry.yaml",
-      body: "gen_ai.agent.id, .name, .description and .version all exist — the identity primitive is there. Nothing anywhere expresses the authority model: whether the agent holds its own standing identity or acts under a user's delegated permissions. This one stays deliberately open in the RFC: it is a question posed to both communities, not a demand." }
+      set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "model/gen-ai/registry.yaml",
+      body: "gen_ai.agent.id, .name, .description and .version all exist — the identity primitive is there. Nothing anywhere expresses the authority model: whether the agent holds its own standing identity or acts under a user's delegated permissions. This is a stated gap, not an ask: nobody is asked to carry it (RAID D28)." }
   ];
 
 export const NARRATION = {
@@ -107,13 +124,14 @@ export const NARRATION = {
   };
 
 export const STEP_ITEMS = {
-    1: ["method", "session", "protocol", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
-    2: ["method", "session", "protocol", "rpc", "args", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
+    1: ["method", "session", "protocol", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
+    2: ["method", "session", "protocol", "rpc", "args", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
     3: []
   };
 
 /** Items a 10% tail sampler (rate configurable, no keep policy) discards. The reference implementation's
  *  Collector keeps governed traces in full at any rate, because a trace that produced a lineage
  *  event is part of the control record, so this is what sampling removes without that policy.
- *  The OpenLineage side has no equivalent knob. */
+ *  The OpenLineage side has no equivalent knob, and neither does MCP's own _meta transport —
+ *  a tail sampler drops spans, not request messages, so parentkey is never in this list. */
 export const SAMPLED_AWAY = ["method", "session", "protocol", "rpc", "args", "duration", "join", "time", "who"];

@@ -44,7 +44,7 @@ def test_port_defaults_when_absent() -> None:
 
 
 def test_non_default_port_is_carried() -> None:
-    """The demo publishes Postgres on 5433 (RAID I11)."""
+    """The demo publishes Postgres on 5433."""
     dsn = "postgresql://postgres:postgres@localhost:5433/warehouse"
     assert target_from_dsn(dsn).namespace == "postgres://localhost:5433"
 
