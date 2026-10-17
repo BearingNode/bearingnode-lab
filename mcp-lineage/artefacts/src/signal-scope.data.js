@@ -54,11 +54,11 @@ export const ITEMS = [
     { id: "join",     sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "trace_id + span_id — the join key",
       set: "Carried by all three", req: "The correlation, not a derivation", stability: "—",
       src: "model/mcp/registry.yaml · W3C Trace Context · custom OL run facet",
-      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. That is why this travels at all, not an incidental fact about OTel and OpenLineage alone. A lineage event may carry those IDs so a reader can pivot between the two stores. It is a link. No OpenLineage event in this design is ever generated from a span. The OpenLineage half is a custom run facet because the spec has none — re-verified against the shipped client at 1.53.0 — and standardising it is one of the two Run facets this workstream proposes. What it names is the span that caused the run to exist, not the spans a run consists of." },
-    { id: "resource", sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "the data resource touched *",
-      set: "Carried by all three — but not the same identifier", req: "Conditionally required (OTel)", stability: "development",
+      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. That is why this travels at all, not an incidental fact about OTel and OpenLineage alone. On MCP SDK 1.x the SDK injects nothing, so the caller must. On SDK 2.x the client SDK injects it when the caller has OpenTelemetry configured (probed once, on 2.3.0). A lineage event may carry those IDs so a reader can pivot between the two stores, and the demo's span carries lineage.run_id so the pointer runs both ways. It is a link. No OpenLineage event in this design is ever generated from a span. The OpenLineage half is a custom run facet because the spec has none — re-verified against the shipped client at 1.53.0 — and standardising it is one of the two Run facets this workstream proposes. What it names is the span that caused the run to exist, not the spans a run consists of." },
+    { id: "resource", sets: ["mcp", "otel"], col: "otel", mono: true, label: "mcp.resource.uri",
+      set: "OpenTelemetry span · MCP convention", req: "Conditionally required", stability: "development",
       src: "model/mcp/registry.yaml",
-      body: "OTel's mcp.resource.uri is an MCP attribute, not a generic OTel one — without MCP naming it, the span side of this correlation does not exist. It is also only a transport pointer, meaningful to the server about to dereference it; its own example is postgres://database/customers/schema. OpenLineage's namespace + name is a catalog identity that must be canonical to join a graph. Neither derives from the other without a naming authority — which is the real reason lineage cannot be reconstructed from spans." },
+      body: "Names the resource when the request carries a resource URI: resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter, so the attribute is not set for the call this figure follows. It is a transport pointer, meaningful to the server about to dereference it, and its own example is postgres://database/customers/schema. It is not a dataset identity. The dataset a tools/call touched is carried by the OpenLineage event, as namespace and name." },
     { id: "rw",       sets: ["otel", "ol"], col: "both", mono: false, label: "read / write intent",
       set: "Carried by both — generic, not MCP-specific", req: "—", stability: "—",
       src: "—",
@@ -79,7 +79,7 @@ export const ITEMS = [
     { id: "dsid",     sets: ["ol"], col: "ol", mono: false, label: "dataset: namespace + name",
       set: "OpenLineage event", req: "Core to the event", stability: "stable",
       src: "openlineage/client/generated/base.py",
-      body: "Canonical dataset identity. OpenLineage has a dataset naming specification precisely because these identifiers must be comparable across producers and across time to form a graph." },
+      body: "Canonical dataset identity. OpenLineage has a dataset naming specification precisely because these identifiers must be comparable across producers and across time to form a graph. In the lab this is how a tools/call is tied to the datasets it touched: the server parses them from the SQL statement it runs, and the span carries no data name." },
     { id: "schema",   sets: ["ol"], col: "ol", mono: true,  label: "SchemaDatasetFacet",
       set: "OpenLineage event · dataset facet", req: "Optional facet", stability: "stable",
       src: "openlineage/client/generated/schema_dataset.py",
@@ -106,10 +106,6 @@ export const ITEMS = [
       label: "The transform the agent performed after the rows left the server — AVG over the returned rows. No span. No facet. No observer.",
       set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "—",
       body: "The MCP server has ground truth for the reads — it ran the SELECTs — and no idea the agent then averaged anything. The caller knows it computed an average but cannot assert dataset identity. The transform falls in the hole between them: outside all three standards' ground truth, not missing through a defect. This lands on the RFC's first assumption — lineage must be declared by the entity enacting it. Only the agent can declare this one." },
-    { id: "g-dataset", sets: [], col: "gap", mono: false,
-      label: "Which dataset a tools/call touched — mcp.resource.uri is defined only for requests that carry a resource URI (resources/read and three others). A tool call carries none.",
-      set: "Carried by none of the three — and this one is MCP's own gap", req: "No mechanism exists", stability: "—", src: "model/mcp/registry.yaml",
-      body: "mcp.resource.uri is conditionally required only when the client executes a request type that includes a resource URI parameter — documented as resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter. Unlike the other two gaps here, this one is MCP's own limitation, not OTel's or OpenLineage's: MCP itself has not named a resource for the call that most needs one. This is the narrow, closeable gap: a concrete proposal to open-telemetry/semantic-conventions-genai. Claiming OTel cannot identify an MCP data resource at all would be wrong, and would be corrected in review." },
     { id: "g-authority", sets: [], col: "gap", mono: false,
       label: "The authority the agent acted under — autonomously, or on behalf of a named user.",
       set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "model/gen-ai/registry.yaml",
@@ -124,8 +120,8 @@ export const NARRATION = {
   };
 
 export const STEP_ITEMS = {
-    1: ["method", "session", "protocol", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
-    2: ["method", "session", "protocol", "rpc", "args", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
+    1: ["method", "session", "protocol", "parentkey", "duration", "join", "rw", "time", "dsid", "schema", "graph"],
+    2: ["method", "session", "protocol", "rpc", "args", "parentkey", "duration", "join", "rw", "time", "dsid", "schema", "graph"],
     3: []
   };
 

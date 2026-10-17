@@ -117,6 +117,7 @@ Further workstreams will follow.
 | `2026.08.2` | `main` | `9833bbdd4a920d7a17c2e43af3ce4d7ac47a261c` | `2026-08-28` |
 | `2026.09` | `main` | `c3d42a2059e6798540998128fa768bc3cc1ff608` | `2026-09-27` |
 | `2026.10` | `main` | `6bb55cd337db102fd8b7c24c85e30545c31939f9` | `2026-10-06` |
+| `2026.10.2` | `main` | `ae87261cbbb858de8a550ac182f3323ee986d78a` | `2026-10-17` |
 
 An edition is a snapshot cut from BearingNode's private lab, recorded here with
 the branch, the full commit and the date it was taken from. Those references are

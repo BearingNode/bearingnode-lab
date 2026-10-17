@@ -1,5 +1,5 @@
 name: mcp-lineage
-# gen: fcb3a017e8fc2d70
+# gen: 5131feb79cc203ee
 
 services:
   postgres:

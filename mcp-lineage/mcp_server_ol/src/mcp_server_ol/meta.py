@@ -206,11 +206,14 @@ def traceparent_from_meta(meta: Any) -> TraceparentLookup:
     """Read an inbound W3C `traceparent` from a request's `_meta`.
 
     **A different mechanism from `parent_from_meta` above, on purpose.**
-    `traceparent`, `tracestate` and `baggage` are reserved keys directly in
-    MCP's `params._meta` — a flat key, per the spec itself (RAID I05) — not
-    the bespoke, nested `LINEAGE_META_KEY` this module uses for OpenLineage
-    parentage. That key exists because MCP has no convention for lineage
-    parentage; this one exists because MCP already reserves it. So this reads
+    `traceparent`, `tracestate` and `baggage` are flat keys directly in MCP's
+    `params._meta`, not the bespoke, nested `LINEAGE_META_KEY` this module uses
+    for OpenLineage parentage. The specification reserves them from revision
+    `2026-07-28` (SEP-414). On `2025-11-25`, the revision this lab ran on, the
+    basis is OpenTelemetry's MCP conventions, which say instrumentations
+    SHOULD inject them (RAID I05). That key exists because MCP has no
+    convention for lineage parentage; this one exists because MCP already
+    names it. So this reads
     `_meta["traceparent"]` as a flat string, never nested under any namespace.
 
     Never raises. Returns a `TraceparentLookup` rather than a bare optional so

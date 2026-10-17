@@ -361,11 +361,12 @@ database client span: "db.system.name": "postgresql"</pre>
     </div>
   </div>
   <p class="anchor__note">Two records, neither derived from the other. <strong>The span box shows what the MCP and database conventions
-    define for a call like this, not what this demo emits:</strong> the demo's own span carries only
-    <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span>.
+    define for a call like this, not what this demo emits:</strong> the demo's own span carries
+    <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span>, and
+    <span class="mono">lineage.dropped</span> when an event is lost.
     <strong>Everything below is an inventory of what the two kinds of record can carry</strong>, field by field. The run event's <span class="mono">traceId</span> and
-    <span class="mono">spanId</span> are the only join between them, and they are a <em>link</em> — no event here is
-    ever generated from a span. <strong>The two marked keys are the whole of what we propose to OpenLineage</strong>: who initiated
+    <span class="mono">spanId</span>, and the span's <span class="mono">lineage.run_id</span>, join them: each record holds
+    the id of the other. They are a <em>link</em> — no event here is ever generated from a span. <strong>The two marked keys are the whole of what we propose to OpenLineage</strong>: who initiated
     this run, and which span caused it. Facet names illustrative; see the call-chain figure for the full before/after
     and why both belong on the Run rather than the Job. <span style="color:var(--muted);">Grey</span> — present
     today, and goes; <span style="color:var(--persimmon-dark);font-weight:700;">persimmon</span> — the two keys
@@ -411,17 +412,10 @@ database client span: "db.system.name": "postgresql"</pre>
         </div>
       </div>
 
-      <!-- Footnote for the asterisk. Deliberately outside the set geometry: it
-           explains an item, it is not a member of the intersection. -->
-      <p class="region__note euler__note">* OTel: <span class="mono">mcp.resource.uri</span>, only on requests that carry a
-        resource URI (<span class="mono">resources/read</span>, <span class="mono">resources/subscribe</span>,
-        <span class="mono">resources/unsubscribe</span>, <span class="mono">notifications/resources/updated</span>),
-        so not on <span class="mono">tools/call</span>. OpenLineage: canonical dataset identity, on every event.</p>
-
       <div class="gap">
         <p class="gap__h">Neither — no mechanism exists today</p>
         <ul class="items" id="col-gap"></ul>
-        <p class="gap__rfc">The dataset gap is the one we ask to close. The other two are stated, not asked.</p>
+        <p class="gap__rfc">Both are stated, not asked. Which dataset a <span class="mono">tools/call</span> touched is not here: the OpenLineage event carries it.</p>
       </div>
     </div>
 
@@ -543,11 +537,11 @@ const ITEMS = [
     { id: "join",     sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "trace_id + span_id — the join key",
       set: "Carried by all three", req: "The correlation, not a derivation", stability: "—",
       src: "model/mcp/registry.yaml · W3C Trace Context · custom OL run facet",
-      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. That is why this travels at all, not an incidental fact about OTel and OpenLineage alone. A lineage event may carry those IDs so a reader can pivot between the two stores. It is a link. No OpenLineage event in this design is ever generated from a span. The OpenLineage half is a custom run facet because the spec has none — re-verified against the shipped client at 1.53.0 — and standardising it is one of the two Run facets this workstream proposes. What it names is the span that caused the run to exist, not the spans a run consists of." },
-    { id: "resource", sets: ["mcp", "otel", "ol"], col: "both", mono: false, label: "the data resource touched *",
-      set: "Carried by all three — but not the same identifier", req: "Conditionally required (OTel)", stability: "development",
+      body: "MCP conventions say instrumentations SHOULD inject the configured propagators — traceparent, tracestate, baggage — into the request params._meta bag. That is why this travels at all, not an incidental fact about OTel and OpenLineage alone. On MCP SDK 1.x the SDK injects nothing, so the caller must. On SDK 2.x the client SDK injects it when the caller has OpenTelemetry configured (probed once, on 2.3.0). A lineage event may carry those IDs so a reader can pivot between the two stores, and the demo's span carries lineage.run_id so the pointer runs both ways. It is a link. No OpenLineage event in this design is ever generated from a span. The OpenLineage half is a custom run facet because the spec has none — re-verified against the shipped client at 1.53.0 — and standardising it is one of the two Run facets this workstream proposes. What it names is the span that caused the run to exist, not the spans a run consists of." },
+    { id: "resource", sets: ["mcp", "otel"], col: "otel", mono: true, label: "mcp.resource.uri",
+      set: "OpenTelemetry span · MCP convention", req: "Conditionally required", stability: "development",
       src: "model/mcp/registry.yaml",
-      body: "OTel's mcp.resource.uri is an MCP attribute, not a generic OTel one — without MCP naming it, the span side of this correlation does not exist. It is also only a transport pointer, meaningful to the server about to dereference it; its own example is postgres://database/customers/schema. OpenLineage's namespace + name is a catalog identity that must be canonical to join a graph. Neither derives from the other without a naming authority — which is the real reason lineage cannot be reconstructed from spans." },
+      body: "Names the resource when the request carries a resource URI: resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter, so the attribute is not set for the call this figure follows. It is a transport pointer, meaningful to the server about to dereference it, and its own example is postgres://database/customers/schema. It is not a dataset identity. The dataset a tools/call touched is carried by the OpenLineage event, as namespace and name." },
     { id: "rw",       sets: ["otel", "ol"], col: "both", mono: false, label: "read / write intent",
       set: "Carried by both — generic, not MCP-specific", req: "—", stability: "—",
       src: "—",
@@ -568,7 +562,7 @@ const ITEMS = [
     { id: "dsid",     sets: ["ol"], col: "ol", mono: false, label: "dataset: namespace + name",
       set: "OpenLineage event", req: "Core to the event", stability: "stable",
       src: "openlineage/client/generated/base.py",
-      body: "Canonical dataset identity. OpenLineage has a dataset naming specification precisely because these identifiers must be comparable across producers and across time to form a graph." },
+      body: "Canonical dataset identity. OpenLineage has a dataset naming specification precisely because these identifiers must be comparable across producers and across time to form a graph. In the lab this is how a tools/call is tied to the datasets it touched: the server parses them from the SQL statement it runs, and the span carries no data name." },
     { id: "schema",   sets: ["ol"], col: "ol", mono: true,  label: "SchemaDatasetFacet",
       set: "OpenLineage event · dataset facet", req: "Optional facet", stability: "stable",
       src: "openlineage/client/generated/schema_dataset.py",
@@ -595,10 +589,6 @@ const ITEMS = [
       label: "The transform the agent performed after the rows left the server — AVG over the returned rows. No span. No facet. No observer.",
       set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "—",
       body: "The MCP server has ground truth for the reads — it ran the SELECTs — and no idea the agent then averaged anything. The caller knows it computed an average but cannot assert dataset identity. The transform falls in the hole between them: outside all three standards' ground truth, not missing through a defect. This lands on the RFC's first assumption — lineage must be declared by the entity enacting it. Only the agent can declare this one." },
-    { id: "g-dataset", sets: [], col: "gap", mono: false,
-      label: "Which dataset a tools/call touched — mcp.resource.uri is defined only for requests that carry a resource URI (resources/read and three others). A tool call carries none.",
-      set: "Carried by none of the three — and this one is MCP's own gap", req: "No mechanism exists", stability: "—", src: "model/mcp/registry.yaml",
-      body: "mcp.resource.uri is conditionally required only when the client executes a request type that includes a resource URI parameter — documented as resources/read, resources/subscribe, resources/unsubscribe and notifications/resources/updated. A tools/call has no such parameter. Unlike the other two gaps here, this one is MCP's own limitation, not OTel's or OpenLineage's: MCP itself has not named a resource for the call that most needs one. This is the narrow, closeable gap: a concrete proposal to open-telemetry/semantic-conventions-genai. Claiming OTel cannot identify an MCP data resource at all would be wrong, and would be corrected in review." },
     { id: "g-authority", sets: [], col: "gap", mono: false,
       label: "The authority the agent acted under — autonomously, or on behalf of a named user.",
       set: "Carried by none of the three", req: "No mechanism exists", stability: "—", src: "model/gen-ai/registry.yaml",
@@ -613,8 +603,8 @@ const NARRATION = {
   };
 
 const STEP_ITEMS = {
-    1: ["method", "session", "protocol", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
-    2: ["method", "session", "protocol", "rpc", "args", "parentkey", "duration", "join", "resource", "rw", "time", "dsid", "schema", "graph"],
+    1: ["method", "session", "protocol", "parentkey", "duration", "join", "rw", "time", "dsid", "schema", "graph"],
+    2: ["method", "session", "protocol", "rpc", "args", "parentkey", "duration", "join", "rw", "time", "dsid", "schema", "graph"],
     3: []
   };
 

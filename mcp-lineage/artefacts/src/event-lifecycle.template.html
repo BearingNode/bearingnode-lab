@@ -116,6 +116,7 @@ body {
 }
 .tag--ask { border-color: var(--persimmon); color: var(--persimmon-dark); }
 .tag--assumed { border-style: dashed; border-color: var(--muted); }
+.tag--probed { border-color: var(--muted); }
 .tag--outside { border-color: var(--persimmon-dark); color: var(--persimmon-dark); }
 
 /* ---------- stores ---------- */
@@ -249,12 +250,18 @@ body {
   </ul>
 
   <p class="prov">
-    Verified 2026-10-05 against the code behind each box:
+    Verified 2026-10-16 against the code behind each box:
     <span class="mono">mcp_server_ol/src/mcp_server_ol/{meta,lineage,driver,telemetry}.py</span>.
-    This shows the intended design. Items marked Ask are proposed and not yet standard, items marked Assumed are relied
-    on but not shown by this implementation, and identity resolution is a separate system outside it.
+    This shows the intended design. Items marked Ask are proposed and not yet standard. Items marked Assumed are relied
+    on but not shown by this implementation, on the MCP SDK 1.x it runs on. Items marked Probed were measured once
+    against SDK 2.x in a probe that is not part of the gates. Identity resolution is a separate system outside it.
     MCP's <span class="mono">_meta</span> mechanism and the <span class="mono">mcp.*</span> and
     <span class="mono">gen_ai.*</span> conventions carry <strong>development</strong> stability and may still change.
+    The lab ran on MCP protocol revision <span class="mono">2025-11-25</span> (checked 2026-10-15). The lab has not been
+    run on revision <span class="mono">2026-07-28</span>, which removes the <span class="mono">initialize</span> handshake
+    and server-side sessions. A probe against SDK <span class="mono">2.3.0</span> negotiated that revision once and
+    showed the <span class="mono">_meta</span> key and <span class="mono">traceparent</span> arriving
+    (<span class="mono">probes/verify_sdk2_meta_and_spans.py</span>, one SDK version, one tracer provider).
   </p>
 
   <footer class="foot">
@@ -293,6 +300,7 @@ __DATA__
     return n;
   }
   function tag(t) { return el('span', 'tag tag--' + t, TAGS[t]); }
+  function addTags(parent, t) { [].concat(t).forEach(function (x) { parent.appendChild(tag(x)); }); }
   function badge(pair) {
     var b = el('span', 'pair' + (pair ? '' : ' pair--blank'), pair || '');
     if (pair) b.dataset.pair = pair;
@@ -314,7 +322,7 @@ __DATA__
       var ul = el('ul');
       c.lines.forEach(function (l) {
         var li = el('li'); li.appendChild(badge(l.pair));
-        var box = el('span'); rich(box, l.text); if (l.tag) box.appendChild(tag(l.tag));
+        var box = el('span'); rich(box, l.text); if (l.tag) addTags(box, l.tag);
         if (l.note) box.appendChild(el('span', 'data__note', l.note));
         li.appendChild(box); ul.appendChild(li);
       });
@@ -325,7 +333,7 @@ __DATA__
   // middle: the stores
   STORES.forEach(function (s) {
     var b = el('section', 'store store--' + s.id);
-    var h = el('p', 'store__h', s.h); if (s.tag) h.appendChild(tag(s.tag)); b.appendChild(h);
+    var h = el('p', 'store__h', s.h); if (s.tag) addTags(h, s.tag); b.appendChild(h);
     s.nodes.forEach(function (n) {
       var nd = el('div', 'store__node'); nd.appendChild(el('b', '', n.h)); nd.appendChild(document.createElement('br')); rich(nd, n.body); b.appendChild(nd);
     });
@@ -340,7 +348,7 @@ __DATA__
     var s = el('section', 'read step--' + (i + 1) + (r.gated ? ' read--gated' : '')); s.dataset.step = String(i + 1);
     var h = el('div', 'read__h'); h.appendChild(badge(r.pair)); h.appendChild(el('span', 'read__lbl', r.label)); h.appendChild(el('span', '', r.h));
     s.appendChild(h);
-    var body = el('p', '', r.body); if (r.tag) body.appendChild(tag(r.tag)); s.appendChild(body);
+    var body = el('p', '', r.body); if (r.tag) addTags(body, r.tag); s.appendChild(body);
     bow.appendChild(s);
   });
 

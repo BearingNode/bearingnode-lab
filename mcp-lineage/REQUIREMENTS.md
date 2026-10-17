@@ -1,6 +1,6 @@
 # Requirements: observability of AI interaction with data
 
-<!-- rev: 1192a9a2a7241d16 -->
+<!-- rev: d18d53276a1cc9dd -->
 
 > This document is written for the CDAO, CRO, Chief AI Officer, third line and
 > compliance. It makes its case using the requirement table below. If you'd
