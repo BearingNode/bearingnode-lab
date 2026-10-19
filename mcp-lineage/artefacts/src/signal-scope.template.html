@@ -361,11 +361,12 @@ database client span: "db.system.name": "postgresql"</pre>
     </div>
   </div>
   <p class="anchor__note">Two records, neither derived from the other. <strong>The span box shows what the MCP and database conventions
-    define for a call like this, not what this demo emits:</strong> the demo's own span carries only
-    <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span>.
+    define for a call like this, not what this demo emits:</strong> the demo's own span carries
+    <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span>, and
+    <span class="mono">lineage.dropped</span> when an event is lost.
     <strong>Everything below is an inventory of what the two kinds of record can carry</strong>, field by field. The run event's <span class="mono">traceId</span> and
-    <span class="mono">spanId</span> are the only join between them, and they are a <em>link</em> — no event here is
-    ever generated from a span. <strong>The two marked keys are the whole of what we propose to OpenLineage</strong>: who initiated
+    <span class="mono">spanId</span>, and the span's <span class="mono">lineage.run_id</span>, join them: each record holds
+    the id of the other. They are a <em>link</em> — no event here is ever generated from a span. <strong>The two marked keys are the whole of what we propose to OpenLineage</strong>: who initiated
     this run, and which span caused it. Facet names illustrative; see the call-chain figure for the full before/after
     and why both belong on the Run rather than the Job. <span style="color:var(--muted);">Grey</span> — present
     today, and goes; <span style="color:var(--persimmon-dark);font-weight:700;">persimmon</span> — the two keys
@@ -411,17 +412,10 @@ database client span: "db.system.name": "postgresql"</pre>
         </div>
       </div>
 
-      <!-- Footnote for the asterisk. Deliberately outside the set geometry: it
-           explains an item, it is not a member of the intersection. -->
-      <p class="region__note euler__note">* OTel: <span class="mono">mcp.resource.uri</span>, only on requests that carry a
-        resource URI (<span class="mono">resources/read</span>, <span class="mono">resources/subscribe</span>,
-        <span class="mono">resources/unsubscribe</span>, <span class="mono">notifications/resources/updated</span>),
-        so not on <span class="mono">tools/call</span>. OpenLineage: canonical dataset identity, on every event.</p>
-
       <div class="gap">
         <p class="gap__h">Neither — no mechanism exists today</p>
         <ul class="items" id="col-gap"></ul>
-        <p class="gap__rfc">The dataset gap is the one we ask to close. The other two are stated, not asked.</p>
+        <p class="gap__rfc">Both are stated, not asked. Which dataset a <span class="mono">tools/call</span> touched is not here: the OpenLineage event carries it.</p>
       </div>
     </div>
 

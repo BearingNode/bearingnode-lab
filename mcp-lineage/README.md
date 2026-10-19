@@ -1,5 +1,5 @@
 # mcp-lineage
-<!-- build: dc06a539fd7e89b2 -->
+<!-- build: 659896c69763f7c7 -->
 
 
 > **All data is synthetic. This must never touch a production system.**
@@ -80,15 +80,17 @@
 >   holds the decisioning context. That trace is not an identity carrier:
 >   well-run deployments strip identity from telemetry (RAID R09). Absent a runtime-actor facet, the event tags itself
 >   `lineage.actor: absent`, honestly, rather than guessing.
-> - **OpenTelemetry** has a specific, real gap at exactly the method this
->   depends on: `tools/call` has no defined attribute for which data resource it
->   touched. The adjacent `mcp.resource.uri` convention exists — it just stops
->   short of reaching it. Beyond that one gap, the bigger point is that OTel
->   shouldn't be asked to become something it structurally can't be: tracing is
->   correctly built to answer *how did this perform*, sampled and
->   short-retained by design — right for a performance question, wrong for a
->   record you're obliged to keep. The fix isn't more OpenTelemetry. It's
->   OpenLineage alongside it for the part tracing was never going to carry.
+> - **OpenTelemetry** is not asked to carry lineage, and we do not ask it to
+>   name data on the span. Tracing is correctly built to answer *how did this
+>   perform*, sampled and short-retained by design: right for a performance
+>   question, wrong for a record you're obliged to keep. OpenLineage sits
+>   alongside it for the part tracing was never going to carry. What a span needs
+>   is a place for a *reference* to that record. In the lab it is
+>   `lineage.run_id`, our own attribute. We do not ask OpenTelemetry for a
+>   standard name for it. We raised the question in
+>   [semantic-conventions-genai#589](https://github.com/open-telemetry/semantic-conventions-genai/issues/589) and withdrew it on 2026-10-17
+>   ([comment](https://github.com/open-telemetry/semantic-conventions-genai/issues/589#issuecomment-6240373373)), because OpenTelemetry's convention for reference
+>   attributes was still changing.
 > - **MCP** needs a convention for carrying, across the tool-call boundary, the
 >   material from which caller identity is reconstructed on read. Identity here
 >   is not a field somebody stamps on an event. It is a set of facts, each
@@ -105,8 +107,8 @@
 > open research question — it is a short list of specific changes across three
 > specific standards, verified against a working implementation of two of
 > them.** Not one change each: OpenLineage is asked for two Run facets, MCP for
-> one `_meta` key, OpenTelemetry for attributes on conventions that already
-> exist. The authority model is the exception: it stays open (RAID D28). The
+> one `_meta` key, OpenTelemetry for an answer on where a reference to the
+> run belongs on a span. The authority model is the exception: it stays open (RAID D28). The
 > breakdown is in *Impact on the standards and their communities*.
 >
 > **[`REQUIREMENTS.md`](REQUIREMENTS.md) states this case in full**, eleven
@@ -149,7 +151,7 @@ appears here rather than glossed.
 
 | Issue | State | Outcome |
 |---|---|---|
-| [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484) — *RFC: Lineage for runtime actor-initiated data interactions* | **Open, engaged** | Two responses. `jakub-moravec` asked **which gaps we see** beyond non-static jobless lineage; `mobuchowski` asked whether [PR #4480](https://github.com/OpenLineage/OpenLineage/pull/4480) is similar. The work in this repository is our answer to both, and it is not yet posted on the thread. What happened to #4480 is set out below. Verified 2026-10-06 |
+| [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484) — *RFC: Lineage for runtime actor-initiated data interactions* | **Open, engaged** | Two responses. `jakub-moravec` asked **which gaps we see** beyond non-static jobless lineage; `mobuchowski` asked whether [PR #4480](https://github.com/OpenLineage/OpenLineage/pull/4480) is similar. The work in this repository is our answer to both, [posted on the thread](https://github.com/OpenLineage/OpenLineage/issues/4484#issuecomment-6046619106) on 2026-10-07. What happened to #4480 is set out below. Verified 2026-10-15 |
 | [MCP #2638](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/2638) — *Tracking: Data lineage for MCP tool calls* | **Closed after 4 hours** | *"AI-generated content with no disclosure or concrete mapping to MCP concepts."* |
 
 **PR #4480 is the closest precedent, and it did not enter the core specification.**
@@ -222,14 +224,17 @@ that the call happened, OpenLineage records what data it touched, joined by
 `trace_id` and `span_id` but never deriving one from the other.
 
 The **fourth region** is the finding: inside the interaction, outside both
-signals. The transform an agent performs after the rows leave the server, the
-dataset a `tools/call` touched, and the authority it acted under. No span, no
-facet, no observer. (MCP's own gap, no convention for carrying a caller's lineage
-parentage across the boundary, is a separate, third finding, covered next. The
-authority gap is stated, not asked: RAID D28.) Every name in the figure was verified on 2026-10-06 against the
+signals. The transform an agent performs after the rows leave the server, and the
+authority it acted under. No span, no facet, no observer. The dataset a
+`tools/call` touched is not in this region: for SQL that the server runs, the
+OpenLineage event carries it, as namespace and name, and the span does not. (MCP's
+own gap, no convention for carrying a caller's lineage parentage across the
+boundary, is a separate, third finding, covered next. The authority gap is stated,
+not asked: RAID D28.) Every name in the figure was verified on 2026-10-06 against the
 published conventions and the OpenLineage client's generated facets. The span box
 shows what the conventions define for such a span, not what this demonstration
-emits (its own span carries only `lineage.run_id` and `lineage.actor_status`). All
+emits (its own span carries `lineage.run_id` and `lineage.actor_status`, and
+`lineage.dropped` when an event is lost). All
 the GenAI and MCP attributes carry `development` stability and may still change.
 
 ### Impact on the standards and their communities
@@ -258,7 +263,7 @@ agent-specific or MCP-specific (RAID D24):
    into gap 1 rather than standing on its own. See item 3 under OpenLineage
    below.
 
-The fourth region above breaks down into concrete changes across the three
+What this work found breaks down into concrete changes across the three
 standards this depends on — not one change each, in every case, and not all
 of them specification changes. The fourth row of the table is there because it
 is **not** an ask: the `lineage.*` run tags are a vocabulary this producer
@@ -267,9 +272,9 @@ they are not read as a request to a fourth community.
 
 | Standard | Gap | Proposed change | Status |
 |---|---|---|---|
-| **MCP** | No convention for carrying, across the tool-call boundary, any of the material from which caller identity is reconstructed on read; the key below carries lineage parentage, which is one such input and is deliberately not a principal | A standard `_meta` key carrying parent run ID, job namespace and job name. A caller populates it only if it emits its own run | Mechanism built; refiling planned. Original ask ([#2638](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/2638)) closed after four hours with a single comment, on disclosure and the lack of a concrete mapping |
-| **OpenTelemetry** | `tools/call` has no defined data-resource attribute; sampling and retention default to lossy for governed-data calls | **(1)** Extend `mcp.resource.uri`, or add a `tools/call`-scoped sibling. **(2)** A Collector retention policy that keeps any trace carrying a lineage marker in full | **(1)** Not yet filed. **(2)** Built and proven here — see [§ Two traffic modes, and what each proves](#two-traffic-modes-and-what-each-proves) |
-| **OpenLineage** | No facet for a per-run runtime actor; no standard facet for trace correlation | **Two new Run facets: who initiated this run, and which span caused it.** `run.facets.actor`, which does not exist, and `run.facets.traceContext`, which exists here only under this producer's own vendor prefix. Facet names illustrative, not proposed spellings. The before/after run event is in [§ OpenLineage](#openlineage) below. **Corrected 2026-09-30: two asks, not three** — the third, an `interaction-derived` value on the `type` field, is withdrawn against the shipped spec. See § OpenLineage item 3 | Thread: [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484) (open). It raises the gap and asks how a runtime actor's identity should be expressed. The two facets are our proposed answer and are not yet posted there |
+| **MCP** | No convention for carrying, across the tool-call boundary, any of the material from which caller identity is reconstructed on read; the key below carries lineage parentage, which is one such input and is deliberately not a principal | A standard `_meta` key carrying parent run ID, job namespace and job name. A caller populates it only if it emits its own run | Mechanism built. Proposed as [financial-services-interest-group#16](https://github.com/modelcontextprotocol/financial-services-interest-group/issues/16), posted 2026-10-08. The original ask ([#2638](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/2638)) was closed after four hours with a single comment, on disclosure and the lack of a concrete mapping |
+| **OpenTelemetry** | A span has no agreed place for a reference to a record held in another standard; sampling and retention default to lossy for governed-data calls | **(1)** Agree that the GenAI and MCP conventions hold no lineage. No data name goes on the span, and the reference from the span to the lineage run stays our own attribute, `lineage.run_id`. **(2)** A Collector retention policy that keeps any trace carrying a lineage marker in full | **(1)** Raised as [semantic-conventions-genai#589](https://github.com/open-telemetry/semantic-conventions-genai/issues/589), posted 2026-10-08. The ask for a standard name for the reference was withdrawn on 2026-10-17 ([comment](https://github.com/open-telemetry/semantic-conventions-genai/issues/589#issuecomment-6240373373)). **(2)** Built and proven here — see [§ Two traffic modes, and what each proves](#two-traffic-modes-and-what-each-proves) |
+| **OpenLineage** | No facet for a per-run runtime actor; no standard facet for trace correlation | **Two new Run facets: who initiated this run, and which span caused it.** `run.facets.actor`, which does not exist, and `run.facets.traceContext`, which exists here only under this producer's own vendor prefix. Facet names illustrative, not proposed spellings. The before/after run event is in [§ OpenLineage](#openlineage) below. **Corrected 2026-09-30: two asks, not three** — the third, an `interaction-derived` value on the `type` field, is withdrawn against the shipped spec. See § OpenLineage item 3 | Thread: [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484) (open). It raises the gap and asks how a runtime actor's identity should be expressed. The two facets are our proposed answer, [posted there](https://github.com/OpenLineage/OpenLineage/issues/4484#issuecomment-6046619106) on 2026-10-07 |
 | **None — the `lineage.*` run tags** | A consumer cannot tell whether an event's datasets were parsed from statement text, read from the engine's resolved plan, or observed in execution. Two conformant events can sit at opposite ends of that scale and render identically in the same catalogue | **Not an ask.** Three keys carried in the standard `TagsRunFacet`, in a vocabulary this producer defines and closes — `lineage.derivation`, `lineage.completeness`, `lineage.actor` (REQ11, RAID D26). No specification surface is requested: the facet is shipped and free-form by design | Emitting since summer 2026. **Expressible, not interoperable** (RAID R14) — nothing in the specification obliges a consumer to preserve or surface a tag key it does not recognise (RAID I45) |
 
 **The authority gap: stated, not asked (RAID D28).** Whether an agent acted on
@@ -303,7 +308,8 @@ autonomous.
    object in the specification, so it supports it structurally, but no key or
    payload shape is agreed.
 2. **Proposed change.** A standard `_meta` key carrying parent run ID, job
-   namespace and job name — the substance of a refiled #2638. A caller populates
+   namespace and job name, the substance of the proposal in
+   [financial-services-interest-group#16](https://github.com/modelcontextprotocol/financial-services-interest-group/issues/16), which follows the closed #2638. A caller populates
    it only if it emits its own run, so that the link points at something that
    exists. Parentage serves a caller with a declared job. An ad hoc caller has no
    run of its own to name, and for it the trace link is the correlation
@@ -326,19 +332,27 @@ autonomous.
 
 #### OpenTelemetry
 
-1. **Specification gap.** `tools/call`, the method this entire class of
-   interaction depends on, has no defined attribute naming which data
-   resource it touched — the adjacent `mcp.resource.uri` names a resource on
-   `resources/read`, `resources/subscribe`, `resources/unsubscribe` and
-   `notifications/resources/updated`, and not on `tools/call`.
-2. **Proposed change.** Extend `mcp.resource.uri`, or add a
-   `tools/call`-scoped sibling, into the actively-developing GenAI/MCP
-   semantic conventions. Not yet filed.
+1. **Specification gap.** A span has no agreed place for a reference to a
+   record that lives in another standard. In the lab the reference is
+   `lineage.run_id`, our own attribute. We do not propose a standard name for it.
+   OpenTelemetry settled `*_ref` naming guidance in
+   [semantic-conventions#4102](https://github.com/open-telemetry/semantic-conventions/pull/4102),
+   and a proposal for a generic reference attribute,
+   [semantic-conventions-genai#368](https://github.com/open-telemetry/semantic-conventions-genai/pull/368), was closed without merging after a
+   maintainer said a reference should point to something that has its own
+   attribute in semconv. A lineage run has none.
+2. **Proposed change.** Agreement on the principle that the GenAI and MCP
+   conventions hold no lineage. **No data name goes on the span.** The first
+   version of this ask, to extend `mcp.resource.uri` to `tools/call`, is
+   withdrawn: it put data names into OpenTelemetry, and the implementation never
+   set it (RAID D25). The second, a standard name for the reference, is also
+   withdrawn (RAID D29). Raised as [semantic-conventions-genai#589](https://github.com/open-telemetry/semantic-conventions-genai/issues/589), posted 2026-10-08, with the second
+   withdrawal in [a comment](https://github.com/open-telemetry/semantic-conventions-genai/issues/589#issuecomment-6240373373).
 3. **Collector-level implementation impact.** Sampling and retention cannot
    apply uniformly. Any trace carrying a lineage marker has to be retained
    in full regardless of the default rate — a Collector configuration
-   pattern (`always-keep-data-access`), not a spec change, but the attribute
-   fix means nothing without it (REQ1). Built and proven here — see [§ Two
+   pattern (`always-keep-data-access`), not a spec change, but the reference
+   on the span means nothing without it (REQ1). Built and proven here — see [§ Two
    traffic modes, and what each proves](#two-traffic-modes-and-what-each-proves).
 4. **Correlation implementation impact.** Joining back to OpenLineage
    requires trace/span ID to be reachable at the exact point lineage is
@@ -487,8 +501,8 @@ The breakdown, gap by gap:
    agent/model/version/session as a pseudonymous reference. This is the answer we
    propose to the question
    [OpenLineage #4484](https://github.com/OpenLineage/OpenLineage/issues/4484)
-   asks, how a runtime actor's identity should be expressed. It is not yet posted
-   there. The closest precedent, PR #4480, met a scope objection and left the core
+   asks, how a runtime actor's identity should be expressed. It was
+   [posted there](https://github.com/OpenLineage/OpenLineage/issues/4484#issuecomment-6046619106) on 2026-10-07. The closest precedent, PR #4480, met a scope objection and left the core
    specification; see [Prior standing](#prior-standing).
 3. **Withdrawn ask, and why — the record is kept rather than deleted.** This
    read: *an `interaction-derived` value on the currently-jobless `type` field,
@@ -744,7 +758,8 @@ A companion to that figure is
 (RAID D27). It draws the same chain as a bow tie. The left side is what is
 captured as the producer's call goes out, the middle is where it lands, and the
 right side mirrors the left: the steps an auditor, SRE or governance analyst takes
-to recreate the event. It marks what is an ask and what is assumed.
+to recreate the event. It marks what is an ask, what is assumed on SDK 1.x, and
+what a probe measured on SDK 2.x.
 
 ![Capture an event, recreate it on read: on the left, what is captured as the producer's call goes out; on the right, the three steps an auditor, SRE or governance analyst takes to recreate the event from it](artefacts/bearingnode-mcp-lineage-event-lifecycle.png)
 
@@ -757,9 +772,12 @@ carries identity itself.
    its parent run id and job, its tags and the trace reference. Once the
    runtime-actor facet exists (an ask, not yet emitted), it adds a pseudonym.
 2. **Follow the trace in Jaeger, by `traceContext`.** This gives the reasoning
-   trace: what was asked and what the agent decided. It resolves only if the
-   client injected `traceparent` and the trace is still held. Both are
-   assumptions.
+   trace: what was asked and what the agent decided. It resolves only if
+   `traceparent` reached the server and the trace is still held. On SDK 1.x the
+   client has to inject it. The demonstration driver does so by hand on one call,
+   and a real client is assumed to. On SDK 2.x the client SDK injects it when the
+   caller has OpenTelemetry configured (measured once, see below). That the trace
+   is still held is assumed on both.
 3. **Resolve the pseudonym, authorised access only.** This is a separate query to
    a separate system, with its own access control and retention (REQ4). It sits
    outside this implementation and is a deliberate second step.
@@ -785,7 +803,8 @@ recovered from the event (RAID D28).
 
 **Two departures from the rules in `AGENTS.md`, stated here and left open.** Neither
 changes what the demonstration shows. The span attributes this implementation adds, `lineage.run_id`, `lineage.dropped`,
-`lineage.actor_status` and `lineage.governed`, are not vendor-prefixed, although
+`lineage.actor_status` and `lineage.governed` (the traffic driver sets the last, not
+the server), are not vendor-prefixed, although
 the facet and the `_meta` key are, and no conformant MCP attribute sits beside
 them (the demonstration emits none). A deployment should rename them to a prefix it
 owns, and that is best settled together with the placeholder `_schemaURL` and
@@ -885,8 +904,22 @@ one path.
 **Which MCP protocol revision was exercised.** The reference implementation and
 its tests run on MCP SDK 1.28.1, whose latest protocol revision is 2025-11-25, and
 the demonstration driver uses SDK 1.9.0. They use the `initialize` handshake and
-server-side sessions. The 2026-07-28 revision removes both, and nothing here has
-been run against it. Where this README says what the 2026-07-28 specification
+server-side sessions. The 2026-07-28 revision removes both, and the lab has not
+been run against it. The server cannot be run against it today. One probe
+(`probes/verify_sdk2_meta_and_spans.py`, 2026-10-15, SDK 2.3.0, not part of the
+gates) exercised the `_meta` key and the spans from a 2.x client against our
+server code. It negotiated 2026-07-28, and the key arrived intact beside the SDK's
+own `io.modelcontextprotocol/*` entries. The 2.x client SDK injected
+`traceparent` when the caller had OpenTelemetry configured and sent none when it
+did not, and the SDK's server span set `mcp.method.name`, `mcp.protocol.version`,
+`gen_ai.operation.name` and `gen_ai.tool.name`. It used one SDK version and one
+tracer provider, so it is a measurement and not a test of the full protocol. The upstream
+server this lab instruments, `postgres-mcp` 0.3.0, is its latest release and
+imports `FastMCP`, which SDK 2.x renamed, so it installs on `mcp` 2.3.0 and then
+fails at import (checked 2026-10-15). The lab's own entrypoint also calls
+`mcp.get_context()`, which SDK 2.x does not have. The lab stays on SDK 1.x for
+those reasons. A change to the upstream server would be needed, and this lab does
+not make one (RAID D03, I64). Where this README says what the 2026-07-28 specification
 defines (RAID D04), that is a reading of the specification text, not something the
 demonstration exercised.
 
@@ -1014,6 +1047,10 @@ to hang parentage from.
   scope (RAID D22), and **this is a bound on the claim, not only on the build** —
   see the note below. Added 2026-09-30 after the case was raised at the
   OpenLineage TSC. `REQUIREMENTS.md` § 11 states the adverse scenario.
+  A single statement that runs for a long time was tried once on 2026-10-17,
+  with a 30 second `pg_sleep`. The run shows as running until the statement
+  ends. If the server is killed mid-statement, the run stays running and the
+  span never arrives, so the trace reference on its event points at nothing.
 
 **This work is tightly scoped, and we think the findings reach further than we
 are claiming.** The cases above are new and deliberately narrow. We believe

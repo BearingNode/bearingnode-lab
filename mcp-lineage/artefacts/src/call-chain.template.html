@@ -362,8 +362,8 @@ body {
         <p>The caller is either a live agent or the deterministic test client. It is the
           <strong>only</strong> source of the lineage-parent reference and of any actor reference (RAID D01, D10) — the
           server cannot invent or derive which run is asking, or who.</p>
-        <p>The agent's own GenAI spans exist and belong to the <strong>same trace</strong> as everything
-          below, but nothing in this repository emits them. That is a stated scope boundary, not an
+        <p>The agent's own GenAI spans exist, and they join the trace below only if trace context reaches
+          the server (stage 2). Nothing in this repository emits them. That is a stated scope boundary, not an
           omission.</p>
       </div>
     </section>
@@ -378,9 +378,14 @@ body {
       </div>
       <p class="cc-stage__path"><span class="mono">driver/driver.py</span> · <span class="mono">mcp_server_ol/.../main.py</span> <span class="mono">install_streamable_http()</span></p>
       <div class="cc-stage__body">
-        <p><span class="mono">await session.call_tool("execute_sql", {"sql": sql})</span></p>
+        <p><span class="mono">await session.send_request(ClientRequest(CallToolRequest(method="tools/call",<br>
+          &nbsp;&nbsp;params=CallToolRequestParams(name="execute_sql", arguments={"sql": sql}, _meta=request_meta))),<br>
+          &nbsp;&nbsp;CallToolResult)</span></p>
       </div>
       <div class="cc-footnote">
+        <p>The test client builds the request itself because the SDK it pins, 1.9.0, has no <span class="mono">meta</span>
+          argument on <span class="mono">call_tool</span>. A client on a later SDK passes <span class="mono">meta=</span>
+          there instead.</p>
         <p>Transport: <span class="mono">streamablehttp_client</span> → <span class="mono">http://localhost:8000/mcp</span>.
           Upstream <span class="mono">postgres-mcp</span> offers only <span class="mono">stdio</span>/<span class="mono">sse</span>;
           Streamable HTTP is obtained by replacing the bound method <span class="mono">mcp.run_sse_async</span> (RAID D13).</p>
@@ -394,13 +399,23 @@ body {
           <span class="mono">jobNamespace</span>, <span class="mono">jobName</span>, and optionally
           <span class="mono">rootRunId</span>, <span class="mono">rootJobNamespace</span>, <span class="mono">rootJobName</span>.
           MCP declares <span class="mono">_meta</span> <span class="mono">extra: allow</span>, so this key travels today
-          against an unmodified SDK — what is missing is agreement on the name.</p>
+          against an unmodified SDK, 1.x and, in the probe below, 2.x — what is missing is agreement on the name.</p>
         <div class="cc-outcomes">
           <div class="cc-outcome cc-outcome--present"><span class="cc-outcome__h">PRESENT — supplied</span>The caller named its parent run; it is linked.</div>
           <div class="cc-outcome cc-outcome--absent"><span class="cc-outcome__h">ABSENT — the gap</span>The normal, quiet, pre-convention state.</div>
           <div class="cc-outcome cc-outcome--malformed"><span class="cc-outcome__h">MALFORMED — reported loudly</span>Somebody's broken integration, never folded into ABSENT (<span class="mono">meta.parent_from_meta</span>).</div>
         </div>
       </div>
+      <div class="cc-footnote" style="margin-top:10px;">
+      <p><strong>Trace context rides in the same <span class="mono">_meta</span>.</strong>
+        <span class="mono">traceparent</span> is a flat key beside ours. The server parents its span on it when it is
+        present and well-formed (stage 5). On SDK 1.x the client has to inject it, and the test client does so by hand
+        on one call only. On SDK 2.x the client SDK injects it when the caller has OpenTelemetry configured, replaces
+        one the caller put there itself, and sends none otherwise. That is measured once, on SDK 2.3.0
+        (<span class="mono">probes/verify_sdk2_meta_and_spans.py</span>, RAID I66), and is not part of the test gates.
+        On 2.x our key arrived intact beside the SDK's own <span class="mono">io.modelcontextprotocol/*</span> keys,
+        and the client function is <span class="mono">streamable_http_client</span>.</p>
+    </div>
     </section>
 
     <div class="cc-seam" aria-hidden="false">
@@ -434,6 +449,10 @@ body {
         <span class="cc-tool cc-tool--unnamed">+3 more, not named in this repository</span>
       </div>
       <p class="cc-tools__key">Outlined = SQL arrives as an argument. Grey = SQL is built internally; the protocol never sees it. Dashed = not named in this repository; two of the three SQL-taking tools are among them.</p>
+      <div class="cc-footnote">
+        <p><span class="mono">postgres-mcp</span> 0.3.0 is the latest release. It imports <span class="mono">FastMCP</span>,
+          which SDK 2.x renamed, so it fails at import there and the lab stays on SDK 1.x (RAID D03, I64).</p>
+      </div>
     </section>
 
     <div class="cc-arrow" aria-hidden="true"></div>
@@ -444,7 +463,7 @@ body {
         <span class="cc-stage__num">4</span>
         <span class="cc-stage__role">The factory swap</span>
       </div>
-      <p class="cc-stage__path"><span class="mono">mcp_server_ol/src/mcp_server_ol/main.py</span> <span class="mono">install()</span>, lines 82–124</p>
+      <p class="cc-stage__path"><span class="mono">mcp_server_ol/src/mcp_server_ol/main.py</span> <span class="mono">install()</span></p>
       <div class="cc-stage__body">
         <p><span class="mono">postgres_mcp.server.get_sql_driver</span> is a <strong>module-level factory</strong>, so
           <span class="mono">install()</span> replaces it with one returning a <span class="mono">LineageSqlDriver</span>.
@@ -475,6 +494,10 @@ body {
           naming collision explicitly.)</p>
       </div>
       <ol class="cc-steps">
+        <li><div class="cc-steps__body"><strong>Read the trace context.</strong> <span class="mono">self._traceparent()</span>
+          → <span class="mono">main._current_traceparent()</span> → <span class="mono">meta.traceparent_from_meta(...)</span>.
+          Present and well-formed: the span below is parented on it. Absent: a fresh trace, quietly. Malformed: a fresh
+          trace, counted as <span class="mono">Dropped.TRACEPARENT_MALFORMED</span>.</div></li>
         <li><div class="cc-steps__body"><strong>Open the OTel span.</strong> <span class="mono">telemetry.tracer().start_as_current_span(self._job_name)</span>,
           default job name <span class="mono">mcp.execute_sql</span>, service resource <span class="mono">mcp-server-ol</span> (<span class="mono">telemetry.py</span>).</div></li>
         <li><div class="cc-steps__body"><strong>Parse.</strong> <span class="mono">parse_statement(sql)</span> → <span class="mono">openlineage_sql.parse([sql], dialect="postgres")</span>.
@@ -486,7 +509,8 @@ body {
           failing, counted as <span class="mono">Dropped.NO_REQUEST_CONTEXT</span> — never folded into the normal absent case.</div></li>
         <li><div class="cc-steps__body"><strong>Mint the run id.</strong> <span class="mono">emitter.new_run_id()</span> → <span class="mono">uuid4</span>.
           Span attributes <span class="mono">lineage.run_id</span> and <span class="mono">lineage.actor_status</span> go on
-          immediately — correlation, not identity (RAID R09).</div></li>
+          immediately — correlation, not identity (RAID R09). <strong>One statement is one span and one run.</strong> A tool
+          call that runs several statements gives several of each.</div></li>
         <li data-emits="marquez-start"><div class="cc-steps__body"><strong>Emit START — before execution.</strong><span class="cc-emit cc-emit--marquez">→ Marquez</span>
           A process killed mid-statement still leaves a record that the database was reached. This ordering is what
           makes fail-closed coherent rather than theatrical.</div></li>
@@ -498,6 +522,14 @@ body {
           The FAIL path is forced fail-open in both postures (<span class="mono">force_open=True</span>) — an emission
           failure must never mask the real database error.</div></li>
       </ol>
+
+      <div class="cc-footnote" style="margin-top:10px;">
+        <p><strong>On SDK 2.x</strong> (probed once, RAID I66) the SDK also emits its own span for the tool call. Ours is
+          parented from the <span class="mono">_meta</span> <span class="mono">traceparent</span>, so it sits beside the
+          SDK's server span under the client's span, not under it. Our <span class="mono">mcp.get_context()</span> call
+          in the two readers above does not exist on 2.x. A single-valued run reference set on the SDK's span would
+          keep only the last of several statements' runs.</p>
+      </div>
 
       <div class="cc-branch">
         <p class="cc-branch__h">5a — the failure posture, off <span class="mono">_safe_emit</span></p>
@@ -601,7 +633,8 @@ body {
         <div class="cc-event__row"><dt>RunEvent</dt><dd><span class="mono">eventType = START | COMPLETE | FAIL</span>, built with <span class="mono">openlineage-python</span> — never hand-rolled JSON.</dd></div>
         <div class="cc-event__row"><dt>Job</dt><dd>namespace <span class="mono">mcp-lineage-demo</span> (<span class="mono">OL_JOB_NAMESPACE</span>), name <span class="mono">mcp.execute_sql</span>, with an <span class="mono">SQLJobFacet</span> carrying the query text.</dd></div>
         <div class="cc-event__row"><dt>Datasets</dt><dd>namespace <span class="mono">postgres://{host}:{port}</span>, name <span class="mono">{database}.{schema}.{table}</span> — e.g. <span class="mono">postgres://postgres:5432</span> / <span class="mono">warehouse.obsinsure.claim</span>, a canonical catalog identity per the OpenLineage naming spec, not a transport pointer. <small class="cc-cite">(RAID A05, I16)</small></dd></div>
-        <div class="cc-event__row"><dt>ParentRunFacet</dt><dd>present only when the caller supplied a parent run. Linkage only — the caller's own facets are deliberately not forwarded nested inside it, because the pinned Marquez silently discards them. <small class="cc-cite">(RAID D10, R07, I22)</small></dd></div>
+        <div class="cc-event__row"><dt>ParentRunFacet</dt><dd>present only when the caller supplied a parent run. Its optional <span class="mono">root</span> (the top of the chain) is built
+          only when all three root fields are present. Linkage only — the caller's own facets are deliberately not forwarded nested inside it, because the pinned Marquez silently discards them. <small class="cc-cite">(RAID D10, R07, I22)</small></dd></div>
       </dl>
 
       <div class="cc-note">
@@ -633,7 +666,9 @@ body {
           <p><span class="cc-path__stat">Retention is a policy choice.</span> The sampling rate is configurable
             (10% here). A trace that produced a lineage event is part of the control record: it holds the
             decisioning context the event alone can't. The Collector keeps it in full at any rate, so the event's
-            trace reference always resolves. Only traces with no governed span are sampled.</p>
+            trace reference resolves for every trace the Collector receives. That the client injected
+            <span class="mono">traceparent</span> and that the backend still holds the trace are assumptions.
+            Only traces with no governed span are sampled.</p>
           <p class="mono">:16686</p>
         </div>
         <div class="cc-connector" aria-hidden="true">
@@ -652,7 +687,8 @@ body {
       <div class="cc-join">
         <span class="cc-join__glyph" aria-hidden="true">⟷</span>
         <div class="cc-join__body">
-          <strong class="mono">trace_id / span_id</strong> — the only join between the two.
+          <strong class="mono">trace_id / span_id</strong> on the event, <strong class="mono">lineage.run_id</strong> on the span:
+          each record holds the id of the other. A span marked <span class="mono">lineage.dropped</span> lost its event.
           <p><strong>Correlation, never derivation.</strong> Nothing in this repository ever generates an
             OpenLineage event from a span.</p>
         </div>
@@ -678,11 +714,16 @@ body {
   </div>
 
   <p class="prov">
-    Code references checked by symbol name 2026-10-05 against:
+    Code references checked by symbol name 2026-10-16 against:
     <span class="mono">mcp-lineage/driver/driver.py</span>,
     <span class="mono">mcp_server_ol/src/mcp_server_ol/{driver,main,meta,lineage,naming,telemetry}.py</span>
-    and <span class="mono">README.md</span>. MCP's <span class="mono">_meta</span> mechanism and the GenAI/MCP semantic
-    conventions it interacts with carry <strong>development</strong> stability and may still change.<br>
+    <span class="mono">mcp-lineage/probes/verify_sdk2_meta_and_spans.py</span> and <span class="mono">README.md</span>.
+    MCP's <span class="mono">_meta</span> mechanism and the GenAI/MCP semantic
+    conventions it interacts with carry <strong>development</strong> stability and may still change.
+    The lab ran MCP SDK 1.28.1 (test client 1.9.0) on protocol revision <span class="mono">2025-11-25</span>. The lab has not
+    run on <span class="mono">2026-07-28</span>. The one probe on SDK 2.3.0 negotiated it and is not part of the gates.
+    The server's entrypoint calls <span class="mono">mcp.get_context()</span>, which SDK 2.x does not have, and
+    <span class="mono">postgres-mcp</span> 0.3.0 fails at import there, so the lab stays on SDK 1.x (RAID D03, I64).<br>
     OpenTelemetry and OpenLineage marks are trademarks of the CNCF and the LF AI &amp; Data Foundation
     respectively, reproduced unmodified to identify each project.
   </p>
